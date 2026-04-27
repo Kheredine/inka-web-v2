@@ -24,3 +24,5 @@ Thumbs.db
 
 # SQLite database (user data — do not commit)
 backend/data/
+
+.next/
