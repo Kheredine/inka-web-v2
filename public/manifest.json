@@ -1,0 +1,84 @@
+{
+  "id": "/",
+  "name": "Inka",
+  "short_name": "Inka",
+  "description": "Audio. Famille. Partage.",
+  "lang": "fr",
+  "start_url": "/feed",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0F0A07",
+  "theme_color": "#0F0A07",
+  "orientation": "portrait-primary",
+  "categories": ["music", "social"],
+  "prefer_related_applications": false,
+
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+
+  "screenshots": [
+    {
+      "src": "/icons/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Feed Inka"
+    }
+  ],
+
+  "shortcuts": [
+    {
+      "name": "Feed",
+      "short_name": "Feed",
+      "description": "Fil d'actualité",
+      "url": "/feed",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Uploader",
+      "short_name": "Upload",
+      "description": "Ajouter un son",
+      "url": "/upload",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Découvrir",
+      "short_name": "Browse",
+      "description": "Explorer les sons",
+      "url": "/browse",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "96x96" }]
+    }
+  ],
+
+  "related_applications": []
+}

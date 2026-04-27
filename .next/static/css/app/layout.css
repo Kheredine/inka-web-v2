@@ -1,0 +1,172 @@
+/*!*************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[3]!./app/globals.css ***!
+  \*************************************************************************************************************************************************************************************************************************************************************/
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --ease-default: 150ms ease;
+  --ease-enter: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --color-bg-base: #0d0d0d;
+  --color-bg-surface: #1a1a1a;
+  --color-bg-elevated: #242424;
+  --color-accent: #E8902A;
+  --color-accent-muted: rgba(232, 144, 42, 0.15);
+  --color-text-primary: #F0EDE8;
+  --color-text-secondary: #8A8680;
+  --color-text-muted: #4A4744;
+  --color-border: rgba(255,255,255,0.08);
+  --color-border-hover: rgba(255,255,255,0.14);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #0d0d0d;
+  color: #F0EDE8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 144, 42, 0.4);
+}
+
+/* Skeleton shimmer */
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 144, 42, 0.35); }
+  50%       { box-shadow: 0 0 0 8px rgba(232, 144, 42, 0); }
+}
+
+/* Like button bounce */
+@keyframes like-bounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.35); }
+  65%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.like-animating {
+  animation: like-bounce 220ms ease forwards;
+}
+
+/* Feed item */
+.feed-item {
+  animation: fadeInUp 0.25s ease;
+}
+
+/* Card hover */
+.inka-card:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+/* Button */
+.inka-btn:hover {
+  opacity: 0.85;
+  transform: scale(0.98);
+}
+
+/* Interactive element active state */
+button:active {
+  transform: scale(0.97);
+  transition: transform 100ms;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #4A4744;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(232, 144, 42, 0.4);
+  outline-offset: 2px;
+}
+
+button {
+  font-family: inherit;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Cover art playing pulse */
+.cover-art-playing {
+  animation: cover-pulse 6s ease-in-out infinite;
+}
+@keyframes cover-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.025); }
+}
+
+.cover-playing {
+  animation: cover-glow-pulse 6s ease-in-out infinite;
+}
+@keyframes cover-glow-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
+  50%       { transform: scale(1.02); box-shadow: 0 28px 80px rgba(232,144,42,0.18), 0 20px 60px rgba(0,0,0,0.7); }
+}
+
+/* Horizontal scroll hide scrollbar */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* Section label */
+.section-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #4A4744;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
