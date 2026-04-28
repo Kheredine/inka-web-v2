@@ -5,12 +5,13 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { SoundCard, HScrollRow, ArtistCard } from '@/components/ui/Card'
 import { SoundCardSkeleton } from '@/components/ui/Skeleton'
-import { UserAvatar } from '@/components/ui/UserAvatar'
 import type { ArtistReleaseCard } from '@/types'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { Sound } from '@/types'
 import { colors, spacing, radius, typography } from '@/lib/theme'
+import { TopBar } from '@/components/layout/TopBar'
+import { useGenres, useRecentSounds, usePopularSounds, useFreshDrops, useRecommendations } from '@/hooks/useBrowseData'
 
 // ── External track types + components ────────────────────────────────────────
 
@@ -170,7 +171,7 @@ function ArtistSearchCard({
       {/* Avatar */}
       <div style={{ width: 52, height: 52, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: colors.surfaceElevated }}>
         {artist.picture ? (
-          <img src={artist.picture} alt={artist.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={artist.picture} alt={artist.name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <i className="fa-solid fa-user" style={{ color: colors.textMuted, fontSize: 20 }} />
@@ -204,129 +205,34 @@ export default function DiscoverPage() {
   const [searchResults, setSearchResults] = useState<Sound[]>([])
   const [externalTracks, setExternalTracks] = useState<ExternalTrack[]>([])
   const [artistResults, setArtistResults] = useState<{ id: number; name: string; picture: string; fanCount: number; nbAlbum: number }[]>([])
-  const [recent, setRecent] = useState<Sound[]>([])
-  const [popular, setPopular] = useState<Sound[]>([])
-  const [freshDrops, setFreshDrops] = useState<ArtistReleaseCard[]>([])
-  const [freshDropsLoading, setFreshDropsLoading] = useState(true)
-  const [recommendations, setRecommendations] = useState<Sound[]>([])
+  // ── SWR data (cached across navigations) ─────────────────────────────────────
+  const { data: recent = [], isLoading: recentLoading } = useRecentSounds(12)
+  const { data: popular = [] } = usePopularSounds()
+  const { data: freshDrops = [], isLoading: freshDropsLoading } = useFreshDrops()
+  const { data: genres = [] } = useGenres()
+  const isLoading = recentLoading
+
+  const { data: recsData, isLoading: recsLoading } = useRecommendations(profile?.id, 20)
+  const recommendations = recsData?.sounds ?? []
+  const recsPersonal = recsData?.meta.personal ?? false
+  const topGenresForExternalRecs = recsData?.meta.topGenres?.[0] ?? null
+
   const [externalRecs, setExternalRecs] = useState<ExternalTrack[]>([])
-  const [recsPersonal, setRecsPersonal] = useState(false)
-  const [recsLoading, setRecsLoading] = useState(true)
-  const [genres, setGenres] = useState<string[]>([])
   const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set())
   const [genreSounds, setGenreSounds] = useState<Sound[]>([])
   const [genreLoading, setGenreLoading] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   const [isSearching, setIsSearching] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
-  // ── Initial load ──────────────────────────────────────────────────────────────
+  // ── Fire-and-forget: external Deezer recs for top genre ───────────────────────
   useEffect(() => {
-    const load = async () => {
-      setIsLoading(true)
-
-      // Fast local data — don't wait on the slow external API
-      const [{ data: recentData }, popularRes, { data: genreData }] = await Promise.all([
-        supabase.from('sounds').select('*, uploader:profiles!uploaded_by(*), reactions(*)').eq('is_public', true).order('created_at', { ascending: false }).limit(12),
-        fetch('/api/popular').then((r) => r.json()).catch(() => []),
-        supabase.from('sounds').select('genre').eq('is_public', true).not('genre', 'is', null),
-      ])
-      setRecent((recentData as Sound[]) ?? [])
-      setPopular(Array.isArray(popularRes) ? popularRes : [])
-      const unique = [...new Set((genreData ?? []).map((s: { genre: string }) => s.genre).filter(Boolean))].sort() as string[]
-      setGenres(unique)
-      setIsLoading(false)
-
-      // Fresh Drops loads independently — page is already usable by the time it resolves
-      fetch('/api/recent-releases')
-        .then(async (r) => {
-          if (!r.ok) { console.error('[fresh-drops] API error', r.status); return { data: [] } }
-          return r.json()
-        })
-        .then((res) => {
-          const fd = res as { data?: ArtistReleaseCard[] }
-          setFreshDrops(Array.isArray(fd.data) ? fd.data : [])
-        })
-        .catch((err) => { console.error('[fresh-drops] fetch failed:', err) })
-        .finally(() => setFreshDropsLoading(false))
-    }
-    load()
-  }, [])
-
-  // ── Personalised recommendations ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!profile) { setRecsLoading(false); return }
-
-    const loadRecommendations = async () => {
-      setRecsLoading(true)
-
-      // Fetch user interactions in parallel (last 90 plays + all likes)
-      const [{ data: played }, { data: reacted }] = await Promise.all([
-        supabase.from('play_history').select('sound_id').eq('user_id', profile.id).order('played_at', { ascending: false }).limit(90),
-        supabase.from('reactions').select('sound_id').eq('user_id', profile.id).limit(60),
-      ])
-
-      const playedIds = played?.map((p: { sound_id: string }) => p.sound_id) ?? []
-      const likedIds = reacted?.map((r: { sound_id: string }) => r.sound_id) ?? []
-      const interactedIds = [...new Set([...playedIds, ...likedIds])]
-
-      if (!interactedIds.length) { setRecsLoading(false); return }
-
-      // Fetch genre of each interacted sound
-      const { data: details } = await supabase
-        .from('sounds').select('id, genre').in('id', interactedIds)
-      if (!details?.length) { setRecsLoading(false); return }
-
-      // Score genres: each play = 1pt, each like = 3pt (stronger signal)
-      const likedSet = new Set(likedIds)
-      const genreScores: Record<string, number> = {}
-      for (const s of details as { id: string; genre?: string }[]) {
-        if (!s.genre) continue
-        const pts = likedSet.has(s.id) ? 3 : 1
-        genreScores[s.genre] = (genreScores[s.genre] ?? 0) + pts
-      }
-
-      const topGenres = Object.entries(genreScores)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([g]) => g)
-
-      if (!topGenres.length) { setRecsLoading(false); return }
-
-      // Query songs from top genres, exclude already-heard
-      const sanitize = (s: string) => s.replace(/[%,()]/g, '')
-      const conditions = topGenres.map((g) => `genre.ilike.%${sanitize(g)}%`).join(',')
-
-      const { data: recs } = await supabase
-        .from('sounds')
-        .select('*, uploader:profiles!uploaded_by(*), reactions(*)')
-        .eq('is_public', true)
-        .or(conditions)
-        .order('play_count', { ascending: false })
-        .limit(30)
-
-      const filtered = (recs as Sound[] ?? [])
-        .filter((s) => !interactedIds.includes(s.id))
-        .slice(0, 12)
-
-      if (filtered.length > 0) {
-        setRecommendations(filtered)
-        setRecsPersonal(true)
-
-        // Fetch external Deezer tracks for top genre (fire-and-forget — non-blocking)
-        if (topGenres[0]) {
-          fetch(`/api/search/tracks?q=${encodeURIComponent(topGenres[0])}`)
-            .then((r) => r.ok ? r.json() : { tracks: [] })
-            .then((res) => setExternalRecs((res.tracks ?? []).slice(0, 8)))
-            .catch(() => {})
-        }
-      }
-      setRecsLoading(false)
-    }
-
-    loadRecommendations().catch(() => setRecsLoading(false))
-  }, [profile?.id])
+    if (!topGenresForExternalRecs || recsLoading) return
+    fetch(`/api/search/tracks?q=${encodeURIComponent(topGenresForExternalRecs)}`)
+      .then((r) => r.ok ? r.json() : { tracks: [] })
+      .then((res) => setExternalRecs((res.tracks ?? []).slice(0, 8)))
+      .catch(() => {})
+  }, [topGenresForExternalRecs, recsLoading])
 
   // ── Search ────────────────────────────────────────────────────────────────────
   const handleSearch = useCallback((text: string) => {
@@ -404,65 +310,20 @@ export default function DiscoverPage() {
 
   return (
     <div>
-      {/* Sticky header */}
-      <div style={{
-        position: 'sticky', top: 0,
-        background: `${colors.background}ee`,
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        zIndex: 10,
-        borderBottom: `0.5px solid ${colors.border}`,
-        padding: `${spacing.md}px ${spacing.lg}px`,
-      }}>
-        {/* Brand bar: logo + name + profile avatar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
-          <div style={{ width: 30, height: 30, borderRadius: radius.md, background: 'var(--accent-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span style={{ color: '#fff', fontSize: 16, fontWeight: 900, lineHeight: 1 }}>I</span>
-          </div>
-          <h1 style={{ color: colors.textPrimary, fontSize: typography.xl.fontSize, fontWeight: 800, letterSpacing: 1, margin: 0, flex: 1 }}>Inka</h1>
-          {profile && (
-            <Link href={`/profile/${profile.id}`} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>
-              <UserAvatar
-                username={profile.username}
-                displayName={profile.display_name}
-                avatarUrl={profile.avatar_url}
-                size={32}
-              />
-            </Link>
-          )}
-        </div>
-
-        {/* Search bar — 48px tall, accent glow on focus */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          background: colors.surface,
-          borderRadius: radius.md,
-          padding: `0 ${spacing.md}px`,
-          border: `0.5px solid ${searchFocused ? 'var(--accent)' : colors.border}`,
-          boxShadow: searchFocused ? '0 0 0 3px rgba(232,144,42,0.12), inset 0 0 0 1px rgba(232,144,42,0.2)' : 'none',
-          height: 48,
-          transition: 'border-color var(--ease-default), box-shadow var(--ease-default)',
-        }}>
-          <i className="fa-solid fa-magnifying-glass" style={{ color: searchFocused ? 'var(--accent)' : colors.textMuted, marginRight: spacing.sm, fontSize: 14, transition: 'color var(--ease-default)' }} />
-          <input
-            value={query}
-            onChange={(e) => handleSearch(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            placeholder="Sons, artistes, genres…"
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: colors.textPrimary, fontSize: typography.sm.fontSize, fontFamily: 'inherit' }}
-          />
-          {query && (
-            <button onClick={() => { setQuery(''); setSearchResults([]) }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textMuted, fontSize: 13, padding: 4, display: 'flex' }}>
-              <i className="fa-solid fa-xmark" />
-            </button>
-          )}
-        </div>
-
+      <TopBar
+        title="Inka"
+        search={{
+          value: query,
+          onChange: handleSearch,
+          placeholder: 'Sons, artistes, genres…',
+          focused: searchFocused,
+          onFocus: () => setSearchFocused(true),
+          onBlur: () => setSearchFocused(false),
+        }}
+      >
         {/* Genre chips — dynamic from DB */}
         {!isSearchMode && (
-          <div style={{ display: 'flex', gap: spacing.sm, marginTop: spacing.md, overflowX: 'auto', scrollbarWidth: 'none' }}>
-            {/* "Tous" chip */}
+          <div style={{ display: 'flex', gap: spacing.sm, overflowX: 'auto', scrollbarWidth: 'none' }}>
             <button
               onClick={clearGenres}
               style={{
@@ -509,7 +370,7 @@ export default function DiscoverPage() {
             })}
           </div>
         )}
-      </div>
+      </TopBar>
 
       {/* Search results */}
       {isSearchMode ? (
@@ -693,7 +554,7 @@ export default function DiscoverPage() {
                         key={card.artistId}
                         card={card}
                         style={{ flexShrink: 0, width: CARD_W }}
-                        onPress={() => router.push(`/artist/${card.artistId}`)}
+                        onPress={() => router.push(`/releases/${card.artistId}/album/${card.latestRelease.id}`)}
                       />
                     ))}
                   </HScrollRow>

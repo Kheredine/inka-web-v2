@@ -177,7 +177,7 @@ function TrendingDetailContent() {
           </div>
         ) : (
           <div style={{ width: '100%', aspectRatio: '16/9', borderRadius: radius.xl, background: colors.surface, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing.md, boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}>
-            {image && <img src={image} alt="" style={{ width: 72, height: 72, borderRadius: radius.lg, objectFit: 'cover', opacity: 0.5 }} />}
+            {image && <img src={image} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 72, borderRadius: radius.lg, objectFit: 'cover', opacity: 0.5 }} />}
             <p style={{ color: colors.textMuted, fontSize: typography.sm.fontSize, margin: 0 }}>Vidéo non disponible</p>
             <a
               href={youtubeSearchUrl}

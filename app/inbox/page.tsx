@@ -9,6 +9,7 @@ import { InboxCard } from '@/components/social/InboxCard'
 import { SoundCardSkeleton } from '@/components/ui/Skeleton'
 import { Share } from '@/types'
 import { colors, spacing, typography, radius } from '@/lib/theme'
+import { TopBar } from '@/components/layout/TopBar'
 
 export default function InboxPage() {
   const { profile } = useAuthStore()
@@ -110,7 +111,7 @@ export default function InboxPage() {
 
   return (
     <div>
-      <h1 style={{ color: colors.textPrimary, fontSize: typography.xl.fontSize, fontWeight: 700, padding: `${spacing.md}px ${spacing.lg}px`, margin: 0 }}>Activité</h1>
+      <TopBar title="Activité" />
 
       {/* Filter pills */}
       <div style={{ display: 'flex', gap: spacing.sm, padding: `0 ${spacing.lg}px ${spacing.md}px`, overflowX: 'auto', scrollbarWidth: 'none' }}>

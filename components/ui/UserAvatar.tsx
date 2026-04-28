@@ -48,6 +48,8 @@ export function UserAvatar({ username, displayName, avatarUrl, size = 36 }: User
         <img
           src={avatarUrl!}
           alt={label}
+          loading="lazy"
+          decoding="async"
           onError={() => setImgError(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />

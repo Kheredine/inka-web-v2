@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { colors, radius, spacing, typography } from '@/lib/theme'
+import { preloadAudioUrl } from '@/components/audio/AudioProvider'
 import { Sound, Album, Playlist, ArtistReleaseCard } from '@/types'
 import { formatDuration, formatTimeAgo } from '@/lib/utils'
 import { CoverArt } from '@/components/ui/CoverArt'
@@ -116,7 +117,7 @@ export function SoundCard({ sound, onPress, onShare, onAddToPlaylist, style, var
   if (variant === 'grid') {
     return (
       <div
-        onMouseEnter={() => setHovered(true)}
+        onMouseEnter={() => { setHovered(true); preloadAudioUrl(sound.audio_url) }}
         onMouseLeave={() => setHovered(false)}
         onClick={goToDetail}
         style={{
@@ -256,6 +257,7 @@ export function SoundCard({ sound, onPress, onShare, onAddToPlaylist, style, var
         ...style,
       }}
       onMouseEnter={(e) => {
+        preloadAudioUrl(sound.audio_url)
         const el = e.currentTarget as HTMLDivElement
         el.style.transform = 'translateY(-1px)'
         el.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)'
@@ -336,7 +338,7 @@ export function TrendingCard({ track, onPress, style }: { track: TrendingTrack; 
       {/* Artwork */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '1', overflow: 'hidden', flexShrink: 0 }}>
         {track.image
-          ? <img src={track.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          ? <img src={track.image} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           : <CoverArt title={track.title} artist={track.artist} size={200} />
         }
         {/* Hover overlay */}
@@ -452,18 +454,20 @@ export function ArtistCard({
         ...style,
       }}
     >
-      {/* Artist image */}
+      {/* Release cover */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '1', overflow: 'hidden', flexShrink: 0 }}>
-        {imgError || !card.artistImage ? (
-          <div style={{ width: '100%', height: '100%', background: artistGradient(card.artistName), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {imgError || !card.latestRelease.cover ? (
+          <div style={{ width: '100%', height: '100%', background: artistGradient(card.latestRelease.title), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', userSelect: 'none' }}>
-              {card.artistName.charAt(0).toUpperCase()}
+              {card.latestRelease.title.charAt(0).toUpperCase()}
             </span>
           </div>
         ) : (
           <img
-            src={card.artistImage}
-            alt={card.artistName}
+            src={card.latestRelease.cover}
+            alt={card.latestRelease.title}
+            loading="lazy"
+            decoding="async"
             onError={() => setImgError(true)}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
@@ -478,13 +482,13 @@ export function ArtistCard({
       {/* Body */}
       <div style={{ padding: `${spacing.md}px`, width: '100%', boxSizing: 'border-box' }}>
         <div style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {card.latestRelease.title}
+        </div>
+        <div style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {card.artistName}
         </div>
-        <div style={{ color: colors.textMuted, fontSize: 11, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ color: colors.textMuted, fontSize: 11, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {typeLabel} · {formatTimeAgo(card.latestRelease.releaseDate)}
-        </div>
-        <div style={{ color: colors.textSecondary, fontSize: 11, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>
-          {card.latestRelease.title}
         </div>
         <div style={{ height: 3, borderRadius: 2, marginTop: 8, background: 'linear-gradient(90deg, var(--accent), rgba(232,144,42,0.15))' }} />
       </div>

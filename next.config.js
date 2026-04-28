@@ -66,20 +66,57 @@ const withPWA = require('next-pwa')({
         expiration: { maxAgeSeconds: 60 * 60 * 24 * 30 },
       },
     },
+
+    // Popular & recent-releases — StaleWhileRevalidate (ok to show slightly stale)
+    {
+      urlPattern: /\/api\/(popular|recent-releases)/,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'inka-api-public',
+        expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 2 },
+      },
+    },
+
+    // Deezer CDN images — CacheFirst
+    {
+      urlPattern: /^https:\/\/.*dzcdn\.net\/.*/,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'inka-deezer-images',
+        expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+
+    // Supabase public storage images (avatars, covers) — StaleWhileRevalidate
+    {
+      urlPattern: /^https:\/\/.*supabase\.co\/storage\/v1\/object\/public\/.*/,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'inka-supabase-images',
+        expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
   ],
 })
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Aucune image distante — tout est génératif
+  // Remote images: Supabase storage + Deezer CDN
   images: {
-    remotePatterns: [],
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/**' },
+      { protocol: 'https', hostname: 'e-cdns-images.dzcdn.net' },
+      { protocol: 'https', hostname: 'api.deezer.com' },
+      { protocol: 'https', hostname: 'cdns-images.dzcdn.net' },
+    ],
   },
 
   // Compression gzip activée sur toutes les réponses
   compress: true,
 
-  // Headers cache pour les routes statiques et audio
+  // Headers cache
   async headers() {
     return [
       {
@@ -88,6 +125,24 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=3600' },
           { key: 'Accept-Ranges', value: 'bytes' },
           { key: 'Content-Type', value: 'audio/ogg' },
+        ],
+      },
+      {
+        source: '/api/popular',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=900, stale-while-revalidate=300' },
+        ],
+      },
+      {
+        source: '/api/recent-releases',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=1800, stale-while-revalidate=600' },
+        ],
+      },
+      {
+        source: '/api/search/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300, stale-while-revalidate=60' },
         ],
       },
       {

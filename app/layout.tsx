@@ -3,6 +3,7 @@ import { AuthGuard } from '@/components/layout/AuthGuard'
 import { AudioProvider } from '@/components/audio/AudioProvider'
 import { ThemeColorProvider } from '@/components/layout/ThemeColorProvider'
 import { AppShell } from '@/components/layout/AppShell'
+import { SWRProvider } from '@/lib/swr-provider'
 import { colors } from '@/lib/theme'
 import './globals.css'
 
@@ -51,12 +52,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             --accent-muted: rgba(232, 144, 42, 0.15);
           }
         `}</style>
-        <AuthGuard>
-          <AudioProvider>
-            <ThemeColorProvider />
-            <AppShell>{children}</AppShell>
-          </AudioProvider>
-        </AuthGuard>
+        <SWRProvider>
+          <AuthGuard>
+            <AudioProvider>
+              <ThemeColorProvider />
+              <AppShell>{children}</AppShell>
+            </AudioProvider>
+          </AuthGuard>
+        </SWRProvider>
       </body>
     </html>
   )

@@ -176,7 +176,7 @@ function AlbumTemplate({
         {/* Album header — mirrors playlist header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg, marginTop: spacing.md }}>
           <div style={{ width: 72, height: 72, borderRadius: radius.xl, overflow: 'hidden', flexShrink: 0, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-            <img src={release.cover} alt={release.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={release.cover} alt={release.title} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing.xs, marginBottom: 2 }}>

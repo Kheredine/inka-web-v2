@@ -12,6 +12,50 @@ import { supabase } from '@/lib/supabase'
 
 // Cache signed URLs for 50 minutes (they last 60min, refresh before expiry)
 const signedUrlCache = new Map<string, { url: string; expiresAt: number }>()
+const preloadInProgress = new Set<string>()
+
+async function resolveAudioUrl(url: string): Promise<string | undefined> {
+  const cached = signedUrlCache.get(url)
+  if (cached && Date.now() < cached.expiresAt) return cached.url
+
+  const createSignedUrl = async (bucket: string, filePath: string) => {
+    const { data } = await supabase.storage.from(bucket).createSignedUrl(filePath, 3600)
+    return data?.signedUrl
+  }
+
+  const cache = (resolved: string) => {
+    signedUrlCache.set(url, { url: resolved, expiresAt: Date.now() + 50 * 60 * 1000 })
+    return resolved
+  }
+
+  try {
+    const parsed = new URL(url)
+    const signedPath = parsed.pathname.match(/\/storage\/v1\/object\/sign\/([^/]+)\/(.+)/)
+    if (signedPath) {
+      const bucket = signedPath[1]
+      const filePath = decodeURIComponent(signedPath[2])
+      const signedUrl = await createSignedUrl(bucket, filePath)
+      return signedUrl ? cache(`/api/audio?url=${encodeURIComponent(signedUrl)}`) : undefined
+    }
+    const publicPath = parsed.pathname.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/)
+    if (publicPath) {
+      const bucket = publicPath[1]
+      const filePath = decodeURIComponent(publicPath[2])
+      const signedUrl = await createSignedUrl(bucket, filePath)
+      return signedUrl ? cache(`/api/audio?url=${encodeURIComponent(signedUrl)}`) : undefined
+    }
+    return cache(`/api/audio?url=${encodeURIComponent(url)}`)
+  } catch {
+    const { data } = await supabase.storage.from('audio-files').createSignedUrl(url, 3600)
+    return data?.signedUrl ? cache(`/api/audio?url=${encodeURIComponent(data.signedUrl)}`) : undefined
+  }
+}
+
+export function preloadAudioUrl(url: string): void {
+  if (preloadInProgress.has(url) || signedUrlCache.has(url)) return
+  preloadInProgress.add(url)
+  resolveAudioUrl(url).finally(() => preloadInProgress.delete(url))
+}
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const howlRef = useRef<Howl | null>(null)
@@ -56,47 +100,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         const path = url.split('?')[0]
         const ext = path.split('.').pop()?.toLowerCase()
         return ext && knownFormats.includes(ext) ? ext : undefined
-      }
-    }
-
-    const resolveAudioUrl = async (url: string) => {
-      // Return cached URL if still valid
-      const cached = signedUrlCache.get(url)
-      if (cached && Date.now() < cached.expiresAt) return cached.url
-
-      const createSignedUrl = async (bucket: string, filePath: string) => {
-        const { data } = await supabase.storage.from(bucket).createSignedUrl(filePath, 3600)
-        return data?.signedUrl
-      }
-
-      const cache = (resolved: string) => {
-        signedUrlCache.set(url, { url: resolved, expiresAt: Date.now() + 50 * 60 * 1000 })
-        return resolved
-      }
-
-      try {
-        const parsed = new URL(url)
-        const signedPath = parsed.pathname.match(/\/storage\/v1\/object\/sign\/([^/]+)\/(.+)/)
-        if (signedPath) {
-          const bucket = signedPath[1]
-          const filePath = decodeURIComponent(signedPath[2])
-          const signedUrl = await createSignedUrl(bucket, filePath)
-          return signedUrl ? cache(`/api/audio?url=${encodeURIComponent(signedUrl)}`) : undefined
-        }
-
-        const publicPath = parsed.pathname.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/)
-        if (publicPath) {
-          const bucket = publicPath[1]
-          const filePath = decodeURIComponent(publicPath[2])
-          const signedUrl = await createSignedUrl(bucket, filePath)
-          return signedUrl ? cache(`/api/audio?url=${encodeURIComponent(signedUrl)}`) : undefined
-        }
-
-        return cache(`/api/audio?url=${encodeURIComponent(url)}`)
-      } catch {
-        const filePath = url
-        const signedUrl = await createSignedUrl('audio-files', filePath)
-        return signedUrl ? cache(`/api/audio?url=${encodeURIComponent(signedUrl)}`) : undefined
       }
     }
 
@@ -185,9 +188,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isPlaying])
 
-  // ── Expose seekTo via a global so components can call it ─────────────────────
+  // ── Expose globals so components can seek and preload audio ──────────────────
   useEffect(() => {
-    (window as Window & { __inkaSeekTo?: (pos: number) => void }).__inkaSeekTo = (pos: number) => {
+    const w = window as Window & { __inkaSeekTo?: (pos: number) => void }
+    w.__inkaSeekTo = (pos: number) => {
       if (howlRef.current) howlRef.current.seek(pos)
       setPosition(pos)
     }

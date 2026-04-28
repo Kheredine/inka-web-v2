@@ -13,6 +13,7 @@ import { useSavedReleasesStore } from '@/stores/savedReleasesStore'
 import { useSavedSoundsStore } from '@/stores/savedSoundsStore'
 import { Sound, PlayHistory, SavedRelease, ReactionEmoji, REACTION_EMOJIS } from '@/types'
 import { colors, spacing, radius, typography } from '@/lib/theme'
+import { TopBar } from '@/components/layout/TopBar'
 
 type Tab = 'uploads' | 'historique' | 'playlists'
 type SortOrder = 'recent' | 'az'
@@ -387,7 +388,7 @@ export default function LibraryPage() {
 
   return (
     <div>
-      <h1 style={{ color: colors.textPrimary, fontSize: typography.xl.fontSize, fontWeight: 700, padding: `${spacing.md}px ${spacing.lg}px`, margin: 0 }}>Bibliothèque</h1>
+      <TopBar title="Bibliothèque" />
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: spacing.sm, padding: `0 ${spacing.lg}px`, marginBottom: spacing.md, overflowX: 'auto' }}>

@@ -5,6 +5,8 @@ import { MiniPlayer } from '@/components/audio/MiniPlayer'
 import { UploadBadge } from '@/components/upload/UploadBadge'
 import { FAB } from '@/components/ui/FAB'
 import { ToastContainer } from '@/components/ui/Toast'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { OfflineBanner } from '@/components/pwa/OfflineBanner'
 
 const SHELL_EXCLUDED = ['/admin', '/login', '/register', '/reset-code', '/popular']
 
@@ -16,11 +18,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <OfflineBanner />
       <main style={{ paddingBottom: 136 }}>{children}</main>
       <MiniPlayer />
       <UploadBadge />
       <FAB />
       <ToastContainer />
+      <InstallPrompt />
       <Navbar />
     </>
   )
