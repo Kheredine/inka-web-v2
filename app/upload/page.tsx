@@ -310,15 +310,32 @@ export default function UploadPage() {
         }
       }
 
-      // Upload du fichier original (la compression se fera en arrière-plan)
+      // Upload direct vers R2 via presigned PUT URL
       const ext = item.file.name.split('.').pop() ?? 'mp3'
-      const storagePath = `${profile.id}/${Date.now()}.${ext}`
+      const r2Key = `${profile.id}/${Date.now()}.${ext}`
+      const contentType = item.file.type || 'audio/mpeg'
 
-      const { error: upErr } = await supabase.storage.from('audio-files').upload(storagePath, item.file, {
-        contentType: item.file.type || 'audio/mpeg',
-        cacheControl: '86400',
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Session expirée, reconnecte-toi')
+
+      const urlRes = await fetch('/api/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ key: r2Key, contentType }),
       })
-      if (upErr) throw new Error(upErr.message)
+      if (!urlRes.ok) throw new Error('Impossible d\'obtenir l\'URL d\'upload')
+      const { uploadUrl } = await urlRes.json() as { uploadUrl: string }
+
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': contentType },
+        body: item.file,
+      })
+      if (!putRes.ok) throw new Error(`Upload R2 échoué (${putRes.status})`)
+
+      // audio_url préfixé r2: pour distinguer des anciennes URLs Supabase
+      const audioUrl = `r2:${r2Key}`
 
       // Insérer le son — safeInsertSound gère les colonnes manquantes en DB
       const { error: insErr } = await safeInsertSound({
@@ -331,8 +348,8 @@ export default function UploadPage() {
         country: item.meta.country.trim() || null,
         description: item.meta.description.trim() || null,
         lyrics: item.meta.lyrics.trim() || null,
-        audio_url: storagePath,
-        audio_url_original: storagePath,
+        audio_url: audioUrl,
+        audio_url_original: audioUrl,
         duration: item.duration,
         uploaded_by: profile.id,
         is_public: true,

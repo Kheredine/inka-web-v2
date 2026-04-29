@@ -9,9 +9,15 @@
  *   NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY   ← clé service (bypass RLS)
  *   COMPRESS_TRIGGER_SECRET     ← secret partagé avec /api/compress-trigger
+ *   R2_ACCOUNT_ID               ← Cloudflare account ID
+ *   R2_ACCESS_KEY_ID            ← R2 API token Access Key ID
+ *   R2_SECRET_ACCESS_KEY        ← R2 API token Secret Access Key
+ *   R2_BUCKET_NAME              ← R2 bucket name (e.g. "inka-audio")
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as fs from 'fs'
@@ -26,6 +32,16 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 )
 
+const r2 = new S3Client({
+  region: 'auto',
+  endpoint: `https://${process.env.R2_ACCOUNT_ID!}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+})
+const R2_BUCKET = process.env.R2_BUCKET_NAME!
+
 const POLL_INTERVAL_MS = 60_000
 const MAX_BATCH = 3
 const OPUS_BITRATE = '128k'
@@ -38,7 +54,7 @@ interface SoundRow {
   compression_attempts: number
 }
 
-async function downloadFile(url: string, dest: string): Promise<void> {
+async function downloadFromUrl(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest)
     https.get(url, res => {
@@ -51,6 +67,20 @@ async function downloadFile(url: string, dest: string): Promise<void> {
   })
 }
 
+/** Download an audio file — supports both r2:<key> and legacy Supabase paths */
+async function downloadAudio(audioUrlOrKey: string, dest: string): Promise<void> {
+  if (audioUrlOrKey.startsWith('r2:')) {
+    const key = audioUrlOrKey.slice(3)
+    const signedUrl = await getSignedUrl(r2, new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }), { expiresIn: 3600 })
+    await downloadFromUrl(signedUrl, dest)
+  } else {
+    // Legacy Supabase storage path
+    const { data, error } = await supabase.storage.from('audio-files').createSignedUrl(audioUrlOrKey, 3600)
+    if (error || !data?.signedUrl) throw new Error(`Signed URL introuvable : ${error?.message}`)
+    await downloadFromUrl(data.signedUrl, dest)
+  }
+}
+
 function getFileSizeMB(filePath: string): number {
   return fs.statSync(filePath).size / (1024 * 1024)
 }
@@ -61,16 +91,7 @@ async function compressSound(sound: SoundRow): Promise<void> {
   const outputPath = path.join(tmpDir, `inka-output-${sound.id}.opus`)
 
   try {
-    // Récupérer signed URL du fichier original
-    const { data: urlData, error: urlError } = await supabase.storage
-      .from('audio-files')
-      .createSignedUrl(sound.audio_url_original, 3600)
-
-    if (urlError || !urlData?.signedUrl) {
-      throw new Error(`Signed URL introuvable : ${urlError?.message}`)
-    }
-
-    await downloadFile(urlData.signedUrl, inputPath)
+    await downloadAudio(sound.audio_url_original, inputPath)
 
     const sizeBefore = getFileSizeMB(inputPath)
 
@@ -115,21 +136,19 @@ async function compressSound(sound: SoundRow): Promise<void> {
     const sizeAfter = getFileSizeMB(outputPath)
     const reduction = Math.round((1 - sizeAfter / sizeBefore) * 100)
 
-    // Upload fichier compressé
+    // Upload fichier compressé vers R2
+    const r2Key = `compressed/${sound.id}.opus`
     const compressedBuffer = fs.readFileSync(outputPath)
-    const storagePath = `compressed/${sound.id}`
 
-    const { error: uploadError } = await supabase.storage
-      .from('audio-files')
-      .upload(storagePath, compressedBuffer, {
-        contentType: 'audio/ogg',
-        upsert: true,
-      })
-
-    if (uploadError) throw new Error(`Upload échoué : ${uploadError.message}`)
+    await r2.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: r2Key,
+      Body: compressedBuffer,
+      ContentType: 'audio/ogg',
+    }))
 
     await supabase.from('sounds').update({
-      audio_url: storagePath,
+      audio_url: `r2:${r2Key}`,
       status: 'ready',
       file_size_original: Math.round(sizeBefore * 1024 * 1024),
       file_size_compressed: Math.round(sizeAfter * 1024 * 1024),

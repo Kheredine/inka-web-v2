@@ -18,16 +18,23 @@ async function resolveAudioUrl(url: string): Promise<string | undefined> {
   const cached = signedUrlCache.get(url)
   if (cached && Date.now() < cached.expiresAt) return cached.url
 
-  const createSignedUrl = async (bucket: string, filePath: string) => {
-    const { data } = await supabase.storage.from(bucket).createSignedUrl(filePath, 3600)
-    return data?.signedUrl
-  }
-
   const cache = (resolved: string) => {
     signedUrlCache.set(url, { url: resolved, expiresAt: Date.now() + 50 * 60 * 1000 })
     return resolved
   }
 
+  // R2 path: stored as "r2:<object-key>" in the database
+  if (url.startsWith('r2:')) {
+    const key = url.slice(3)
+    return cache(`/api/audio?r2=${encodeURIComponent(key)}`)
+  }
+
+  const createSignedUrl = async (bucket: string, filePath: string) => {
+    const { data } = await supabase.storage.from(bucket).createSignedUrl(filePath, 3600)
+    return data?.signedUrl
+  }
+
+  // Legacy Supabase paths
   try {
     const parsed = new URL(url)
     const signedPath = parsed.pathname.match(/\/storage\/v1\/object\/sign\/([^/]+)\/(.+)/)
