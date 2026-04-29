@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { AuthGuard } from '@/components/layout/AuthGuard'
 import { AudioProvider } from '@/components/audio/AudioProvider'
 import { ThemeColorProvider } from '@/components/layout/ThemeColorProvider'
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </AudioProvider>
           </AuthGuard>
         </SWRProvider>
+        <SpeedInsights />
       </body>
     </html>
   )
