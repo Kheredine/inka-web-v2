@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { ArtistReleaseCard, ReleaseType } from '@/types'
-import { resolveDeezerArtistId } from '@/app/api/resolve-deezer-artist/route'
+import { resolveDeezerArtistId } from '@/lib/resolve-deezer-artist'
 
 export const dynamic = 'force-dynamic'
 

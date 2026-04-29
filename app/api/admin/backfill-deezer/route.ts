@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { resolveDeezerArtistId } from '@/app/api/resolve-deezer-artist/route'
+import { resolveDeezerArtistId } from '@/lib/resolve-deezer-artist'
 
 // One-shot backfill: resolves and stores deezer_artist_id for every artist in the DB
 // that doesn't have one yet. Hit GET /api/admin/backfill-deezer once after deploying

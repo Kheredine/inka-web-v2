@@ -83,7 +83,7 @@ function TrendingDetailContent() {
     // Last.fm track info
     fetch(`/api/track-info?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`)
       .then((r) => r.json())
-      .then((d) => setTrackInfo({ listeners: d.listeners ?? null, playcount: d.playcount ?? null, tags: d.tags ?? [], wiki: d.wiki ?? null, duration: d.duration ?? null }))
+      .then((d) => setTrackInfo({ listeners: d.listeners ?? null, playcount: d.playcount ?? null, release_date: d.release_date ?? null, album: d.album ?? null, tags: d.tags ?? [], wiki: d.wiki ?? null, duration: d.duration ?? null }))
       .catch(() => setTrackInfo(null))
       .finally(() => setInfoLoading(false))
 

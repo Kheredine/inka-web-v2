@@ -298,7 +298,7 @@ export default function LibraryPage() {
       supabase.from('reactions').select('emoji, created_at, sound:sounds(*, reactions(*))').eq('user_id', profile.id).order('created_at', { ascending: false }),
     ])
     setUploads((uploadsRes.data as Sound[]) ?? [])
-    const rows = (reactionsRes.data ?? []) as ReactionEntry[]
+    const rows = (reactionsRes.data ?? []) as unknown as ReactionEntry[]
     const seen = new Set<string>()
     setReactions(rows.filter(r => {
       if (!r.sound) return false
