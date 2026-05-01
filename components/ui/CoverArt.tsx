@@ -7,6 +7,7 @@ export interface CoverArtProps {
   mood?: string
   energy?: 'low' | 'medium' | 'high'
   size?: number
+  fill?: boolean
   isPlaying?: boolean
 }
 
@@ -45,7 +46,7 @@ function inferMood(genre?: string, energy?: string, mood?: string, h = 0): Mood 
   return moodLabels[h % moodLabels.length]
 }
 
-export function CoverArt({ title, artist, genre, mood, energy, size = 56, isPlaying = false }: CoverArtProps) {
+export function CoverArt({ title, artist, genre, mood, energy, size = 56, fill = false, isPlaying = false }: CoverArtProps) {
   const h = hash(`${title ?? ''}|${artist ?? ''}|${genre ?? ''}|${mood ?? ''}`)
   const moodCat = inferMood(genre, energy, mood, h)
   const letter = (title?.[0] ?? '\u266a').toUpperCase()
@@ -64,7 +65,7 @@ export function CoverArt({ title, artist, genre, mood, energy, size = 56, isPlay
     const c1 = `hsl(${hue},52%,32%)`; const c2 = `hsl(${h2},46%,25%)`; const c3 = `hsl(${h3},40%,20%)`
     const tc = `hsl(${hue},68%,80%)`
     return (
-      <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0 }} className={cls} aria-label={`${title} — ${artist}`}>
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0, width: fill ? '100%' : size, height: fill ? '100%' : size }} className={cls} aria-label={`${title} — ${artist}`}>
         <defs>
           <filter id={`f-${uid}`}><feGaussianBlur stdDeviation="10" /></filter>
           <radialGradient id={`c1-${uid}`} cx={`${cx1}%`} cy={`${cy1}%`} r="65%"><stop offset="0%" stopColor={c1} /><stop offset="100%" stopColor={bg} stopOpacity="0" /></radialGradient>
@@ -90,7 +91,7 @@ export function CoverArt({ title, artist, genre, mood, energy, size = 56, isPlay
     const ang = 25 + Math.round(v(8) * 35)
     const px = 8 + Math.round(v(12) * 20)
     return (
-      <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0 }} className={cls} aria-label={`${title} — ${artist}`}>
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0, width: fill ? '100%' : size, height: fill ? '100%' : size }} className={cls} aria-label={`${title} — ${artist}`}>
         <defs>
           <radialGradient id={`e1-${uid}`} cx="28%" cy="25%" r="70%"><stop offset="0%" stopColor={c1} /><stop offset="100%" stopColor={bg} stopOpacity="0" /></radialGradient>
           <radialGradient id={`e2-${uid}`} cx="72%" cy="75%" r="60%"><stop offset="0%" stopColor={c2} stopOpacity="0.9" /><stop offset="100%" stopColor={bg} stopOpacity="0" /></radialGradient>
@@ -120,7 +121,7 @@ export function CoverArt({ title, artist, genre, mood, energy, size = 56, isPlay
       r: 1 + Math.round(v(16 + i * 4) * 2.5), op: 0.35 + v(20 + i * 4) * 0.55,
     }))
     return (
-      <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0 }} className={cls} aria-label={`${title} — ${artist}`}>
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0, width: fill ? '100%' : size, height: fill ? '100%' : size }} className={cls} aria-label={`${title} — ${artist}`}>
         <defs>
           <radialGradient id={`d1-${uid}`} cx="38%" cy="32%" r="65%"><stop offset="0%" stopColor={c1} stopOpacity="0.65" /><stop offset="100%" stopColor={bg} stopOpacity="0" /></radialGradient>
           <radialGradient id={`d2-${uid}`} cx="62%" cy="68%" r="50%"><stop offset="0%" stopColor={c2} stopOpacity="0.45" /><stop offset="100%" stopColor={bg} stopOpacity="0" /></radialGradient>
@@ -150,7 +151,7 @@ export function CoverArt({ title, artist, genre, mood, energy, size = 56, isPlay
     for (let x = gsp; x < 100; x += gsp) lines.push([x, 0, x, 100])
     for (let y = gsp; y < 100; y += gsp) lines.push([0, y, 100, y])
     return (
-      <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0 }} className={cls} aria-label={`${title} — ${artist}`}>
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0, width: fill ? '100%' : size, height: fill ? '100%' : size }} className={cls} aria-label={`${title} — ${artist}`}>
         <defs>
           <radialGradient id={`cl1-${uid}`} cx="50%" cy="40%" r="68%"><stop offset="0%" stopColor={c1} stopOpacity="0.9" /><stop offset="100%" stopColor={bg} stopOpacity="0" /></radialGradient>
           <radialGradient id={`cl2-${uid}`} cx="50%" cy="62%" r="52%"><stop offset="0%" stopColor={c2} stopOpacity="0.6" /><stop offset="100%" stopColor={bg} stopOpacity="0" /></radialGradient>
@@ -178,7 +179,7 @@ export function CoverArt({ title, artist, genre, mood, energy, size = 56, isPlay
     rot: Math.round(v(i * 16 + 14) * 180),
   }))
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0 }} className={cls} aria-label={`${title} — ${artist}`}>
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0, width: fill ? '100%' : size, height: fill ? '100%' : size }} className={cls} aria-label={`${title} — ${artist}`}>
       <defs>
         <radialGradient id={`x1-${uid}`} cx="34%" cy="34%" r="65%"><stop offset="0%" stopColor={c1} /><stop offset="100%" stopColor={bg} stopOpacity="0" /></radialGradient>
         <radialGradient id={`x2-${uid}`} cx="66%" cy="66%" r="55%"><stop offset="0%" stopColor={c2} stopOpacity="0.85" /><stop offset="100%" stopColor={bg} stopOpacity="0" /></radialGradient>

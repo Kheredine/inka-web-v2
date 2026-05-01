@@ -315,8 +315,10 @@ export default function UploadPage() {
       const r2Key = `${profile.id}/${Date.now()}.${ext}`
       const contentType = item.file.type || 'audio/mpeg'
 
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      // Force-refresh the token — on mobile PWA the stored token can expire while backgrounded
+      const { data: refreshData } = await supabase.auth.refreshSession()
+      const token = refreshData.session?.access_token
+        ?? (await supabase.auth.getSession()).data.session?.access_token
       if (!token) throw new Error('Session expirée, reconnecte-toi')
 
       const urlRes = await fetch('/api/upload-url', {
@@ -324,7 +326,10 @@ export default function UploadPage() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ key: r2Key, contentType }),
       })
-      if (!urlRes.ok) throw new Error('Impossible d\'obtenir l\'URL d\'upload')
+      if (!urlRes.ok) {
+        const errBody = await urlRes.json().catch(() => ({})) as { error?: string; detail?: string }
+        throw new Error(`Impossible d'obtenir l'URL d'upload (${urlRes.status}): ${errBody.detail ?? errBody.error ?? ''}`)
+      }
       const { uploadUrl } = await urlRes.json() as { uploadUrl: string }
 
       const putRes = await fetch(uploadUrl, {

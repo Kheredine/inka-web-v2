@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { usePlayer } from '@/hooks/usePlayer'
+import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { CoverArt } from '@/components/ui/CoverArt'
 import { supabase } from '@/lib/supabase'
@@ -10,6 +11,7 @@ import { colors, spacing, radius } from '@/lib/theme'
 
 export function MiniPlayer() {
   const { currentSound, isPlaying, position, duration, togglePlay, skipToNext } = usePlayer()
+  const { setQueueVisible, queue } = usePlayerStore()
   const pathname = usePathname()
   const profile = useAuthStore((s) => s.profile)
 
@@ -104,7 +106,7 @@ export function MiniPlayer() {
           <i className={`fa-${liked ? 'solid' : 'regular'} fa-heart ${likeAnimating ? 'like-animating' : ''}`} />
         </button>
 
-        {/* Playback controls */}
+        {/* Play / pause */}
         <button
           onClick={togglePlay}
           style={{
@@ -119,6 +121,8 @@ export function MiniPlayer() {
         >
           <i className={`fa-solid ${isPlaying ? 'fa-pause' : 'fa-play'}`} style={{ marginLeft: isPlaying ? 0 : 2, fontSize: 14 }} />
         </button>
+
+        {/* Skip next */}
         <button
           onClick={skipToNext}
           style={{
@@ -128,6 +132,29 @@ export function MiniPlayer() {
           }}
         >
           <i className="fa-solid fa-forward-step" />
+        </button>
+
+        {/* Queue button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); setQueueVisible(true) }}
+          style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: colors.textMuted, fontSize: 14, padding: 6,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative',
+          }}
+          title="File d'attente"
+        >
+          <i className="fa-solid fa-list" />
+          {queue.length > 1 && (
+            <span style={{
+              position: 'absolute', top: 1, right: 1,
+              fontSize: 8, fontWeight: 700,
+              color: 'var(--accent)', lineHeight: 1,
+            }}>
+              {queue.length}
+            </span>
+          )}
         </button>
       </div>
     </div>

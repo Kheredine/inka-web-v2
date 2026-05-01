@@ -1,34 +1,42 @@
 'use client'
 import { colors } from '@/lib/theme'
-import { RepeatMode } from '@/stores/playerStore'
+import { RepeatMode, ShuffleMode } from '@/stores/playerStore'
 
 interface PlayerControlsProps {
   isPlaying: boolean
-  shuffle: boolean
+  shuffleMode: ShuffleMode
   repeatMode: RepeatMode
   onTogglePlay: () => void
   onSkipNext: () => void
   onSkipPrev: () => void
-  onToggleShuffle: () => void
+  onCycleShuffleMode: () => void
   onCycleRepeat: () => void
+  onOpenQueue?: () => void
   size?: 'sm' | 'lg'
 }
 
 export function PlayerControls({
-  isPlaying, shuffle, repeatMode,
-  onTogglePlay, onSkipNext, onSkipPrev, onToggleShuffle, onCycleRepeat,
+  isPlaying, shuffleMode, repeatMode,
+  onTogglePlay, onSkipNext, onSkipPrev, onCycleShuffleMode, onCycleRepeat, onOpenQueue,
   size = 'lg',
 }: PlayerControlsProps) {
   const isLg = size === 'lg'
 
-  const iconBtn = (onClick: () => void, iconClass: string, active?: boolean, badge?: string) => (
+  const iconBtn = (
+    onClick: () => void,
+    iconClass: string,
+    active?: boolean,
+    badge?: string,
+    title?: string,
+  ) => (
     <button
       onClick={onClick}
+      title={title}
       style={{
         background: 'transparent',
         border: 'none',
         cursor: 'pointer',
-        color: active ? colors.primary : colors.textSecondary,
+        color: active ? 'var(--accent)' : colors.textSecondary,
         fontSize: isLg ? 20 : 16,
         padding: 8,
         display: 'flex',
@@ -45,7 +53,7 @@ export function PlayerControls({
           right: 2,
           fontSize: 9,
           fontWeight: 700,
-          color: colors.primary,
+          color: 'var(--accent)',
           lineHeight: 1,
         }}>
           {badge}
@@ -76,16 +84,25 @@ export function PlayerControls({
     </button>
   )
 
-  const repeatIcon = repeatMode === 'track' ? 'fa-repeat' : 'fa-repeat'
+  // Shuffle: off=gray, shuffle=accent, ai=accent + 'AI' badge
+  const shuffleActive = shuffleMode !== 'off'
+  const shuffleBadge = shuffleMode === 'ai' ? 'AI' : undefined
+  const shuffleTitle =
+    shuffleMode === 'off' ? 'Activer l\'aléatoire' :
+    shuffleMode === 'shuffle' ? 'Passer en IA shuffle' :
+    'Désactiver l\'aléatoire'
+
+  const repeatIcon = 'fa-repeat'
   const repeatBadge = repeatMode === 'track' ? '1' : undefined
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isLg ? 8 : 4 }}>
-      {iconBtn(onToggleShuffle, 'fa-shuffle', shuffle)}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isLg ? 4 : 2 }}>
+      {iconBtn(onCycleShuffleMode, 'fa-shuffle', shuffleActive, shuffleBadge, shuffleTitle)}
       {iconBtn(onSkipPrev, 'fa-backward-step')}
       {playBtn}
       {iconBtn(onSkipNext, 'fa-forward-step')}
       {iconBtn(onCycleRepeat, repeatIcon, repeatMode !== 'off', repeatBadge)}
+      {onOpenQueue && iconBtn(onOpenQueue, 'fa-list', false, undefined, 'File d\'attente')}
     </div>
   )
 }

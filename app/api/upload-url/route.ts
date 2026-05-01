@@ -39,6 +39,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Key must start with your user ID' }, { status: 403 })
   }
 
-  const uploadUrl = await getUploadUrl(key, contentType)
-  return NextResponse.json({ uploadUrl, key })
+  try {
+    const uploadUrl = await getUploadUrl(key, contentType)
+    return NextResponse.json({ uploadUrl, key })
+  } catch (err) {
+    console.error('[upload-url] getUploadUrl failed:', err)
+    return NextResponse.json({ error: 'R2 presigned URL generation failed', detail: String(err) }, { status: 502 })
+  }
 }

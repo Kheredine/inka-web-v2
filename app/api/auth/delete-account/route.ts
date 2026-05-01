@@ -25,8 +25,7 @@ export async function POST(req: NextRequest) {
     await supabaseAdmin.from('playlists').delete().eq('created_by', userId)
   }
 
-  // Make user sounds private rather than deleting (preserves history for others)
-  await supabaseAdmin.from('sounds').update({ is_public: false }).eq('uploaded_by', userId)
+  // Sounds stay public — the uploader_by ref becomes orphaned but the UI shows "Membre" as fallback
 
   // Delete profile
   await supabaseAdmin.from('profiles').delete().eq('id', userId)

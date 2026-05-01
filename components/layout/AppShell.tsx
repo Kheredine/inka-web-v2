@@ -2,6 +2,7 @@
 import { usePathname } from 'next/navigation'
 import { Navbar } from '@/components/layout/Navbar'
 import { MiniPlayer } from '@/components/audio/MiniPlayer'
+import { QueuePanel } from '@/components/audio/QueuePanel'
 import { UploadBadge } from '@/components/upload/UploadBadge'
 import { FAB } from '@/components/ui/FAB'
 import { ToastContainer } from '@/components/ui/Toast'
@@ -21,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <OfflineBanner />
       <main style={{ paddingBottom: 136 }}>{children}</main>
       <MiniPlayer />
+      <QueuePanel />
       <UploadBadge />
       <FAB />
       <ToastContainer />

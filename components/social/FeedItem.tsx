@@ -135,7 +135,7 @@ export function FeedItem({ sound, targetPlaylistId }: FeedItemProps) {
         onClick={handlePlay}
         style={{ position: 'relative', width: '100%', aspectRatio: '1', overflow: 'hidden', flexShrink: 0 }}
       >
-        <CoverArt title={sound.title} artist={sound.artist} genre={sound.genre} size={200} isPlaying={isActive && isPlaying} />
+        <CoverArt title={sound.title} artist={sound.artist} genre={sound.genre} fill isPlaying={isActive && isPlaying} />
 
         {/* Dark overlay */}
         <div style={{

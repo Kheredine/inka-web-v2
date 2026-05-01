@@ -3,6 +3,7 @@ import { AuthGuard } from '@/components/layout/AuthGuard'
 import { AudioProvider } from '@/components/audio/AudioProvider'
 import { ThemeColorProvider } from '@/components/layout/ThemeColorProvider'
 import { AppShell } from '@/components/layout/AppShell'
+import { PlayerShell } from '@/components/player/PlayerShell'
 import { SWRProvider } from '@/lib/swr-provider'
 import { colors } from '@/lib/theme'
 import './globals.css'
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AudioProvider>
               <ThemeColorProvider />
               <AppShell>{children}</AppShell>
+              <PlayerShell />
             </AudioProvider>
           </AuthGuard>
         </SWRProvider>

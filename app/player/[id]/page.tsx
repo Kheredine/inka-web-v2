@@ -423,7 +423,7 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
             <ProgressBar position={player.position} duration={player.duration} onSeek={player.seekTo} />
           </div>
           <div style={{ marginBottom: spacing.xl }}>
-            <PlayerControls isPlaying={player.isPlaying} shuffle={player.shuffle} repeatMode={player.repeatMode} onTogglePlay={player.togglePlay} onSkipNext={player.skipToNext} onSkipPrev={player.skipToPrevious} onToggleShuffle={player.toggleShuffle} onCycleRepeat={player.cycleRepeat} />
+            <PlayerControls isPlaying={player.isPlaying} shuffleMode={player.shuffleMode} repeatMode={player.repeatMode} onTogglePlay={player.togglePlay} onSkipNext={player.skipToNext} onSkipPrev={player.skipToPrevious} onCycleShuffleMode={player.cycleShuffleMode} onCycleRepeat={player.cycleRepeat} onOpenQueue={() => player.setQueueVisible(true)} />
           </div>
         </>
       ) : (
