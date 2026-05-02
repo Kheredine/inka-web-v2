@@ -82,12 +82,12 @@ export async function POST(req: NextRequest) {
       result.playlists = playlists.map(p => ({
         id: p.id,
         name: p.name,
-        description: p.description,
+        description: p.description ?? '',
         image: p.images?.[0]?.url ?? null,
-        trackCount: p.tracks.total,
-        owner: p.owner.display_name,
-        isPublic: p.public,
-        spotifyUrl: p.external_urls.spotify,
+        trackCount: p.tracks?.total ?? 0,
+        owner: p.owner?.display_name ?? 'Unknown',
+        isPublic: p.public ?? false,
+        spotifyUrl: p.external_urls?.spotify ?? '',
       }))
     }
 
