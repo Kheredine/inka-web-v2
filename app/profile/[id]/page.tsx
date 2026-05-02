@@ -258,9 +258,9 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   const [spotifyLoading, setSpotifyLoading] = useState(true)
   const [importStep, setImportStep] = useState<'idle' | 'loading' | 'preview' | 'done'>('idle')
   const [importData, setImportData] = useState<{
-    likedTracks: { id: string; name: string; artists: string[]; albumArt: string | null }[]
-    playlists: { id: string; name: string; image: string | null; trackCount: number; owner: string }[]
-    albums: { id: string; name: string; artists: string[]; image: string | null; totalTracks: number }[]
+    likedTracks: { spotify_id: string; name: string; artists: string; album_art: string | null }[]
+    playlists: { spotify_id: string; name: string; image: string | null; track_count: number; owner: string }[]
+    albums: { spotify_id: string; name: string; artists: string; image: string | null; total_tracks: number }[]
   }>({ likedTracks: [], playlists: [], albums: [] })
   const [spotifyError, setSpotifyError] = useState<string | null>(null)
 
@@ -344,9 +344,9 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Import failed') }
       const d = await res.json()
       setImportData({
-        likedTracks: (d.likedTracks ?? []) as { id: string; name: string; artists: string[]; albumArt: string | null }[],
-        playlists: (d.playlists ?? []) as { id: string; name: string; image: string | null; trackCount: number; owner: string }[],
-        albums: (d.albums ?? []) as { id: string; name: string; artists: string[]; image: string | null; totalTracks: number }[],
+        likedTracks: d.likedTracks ?? [],
+        playlists: d.playlists ?? [],
+        albums: d.albums ?? [],
       })
       setImportStep('preview')
     } catch (err) {
@@ -756,11 +756,11 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                     </div>
                     <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                       {importData.likedTracks.slice(0, 20).map(t => (
-                        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `${spacing.xs}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
-                          {t.albumArt ? <img src={t.albumArt} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: colors.background }} />}
+                        <div key={t.spotify_id} style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `${spacing.xs}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
+                          {t.album_art ? <img src={t.album_art} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: colors.background }} />}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ color: colors.textPrimary, fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
-                            <div style={{ color: colors.textMuted, fontSize: 10 }}>{t.artists.join(', ')}</div>
+                            <div style={{ color: colors.textMuted, fontSize: 10 }}>{t.artists}</div>
                           </div>
                         </div>
                       ))}
@@ -775,11 +775,11 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                       <span style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600 }}>Playlists ({importData.playlists.length})</span>
                     </div>
                     {importData.playlists.map(p => (
-                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `${spacing.xs}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
+                      <div key={p.spotify_id} style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `${spacing.xs}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
                         {p.image ? <img src={p.image} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: colors.background, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fa-solid fa-music" style={{ fontSize: 12, color: colors.textMuted }} /></div>}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ color: colors.textPrimary, fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                          <div style={{ color: colors.textMuted, fontSize: 10 }}>{p.trackCount} titres · par {p.owner}</div>
+                          <div style={{ color: colors.textMuted, fontSize: 10 }}>{p.track_count} titres · par {p.owner}</div>
                         </div>
                       </div>
                     ))}
@@ -792,11 +792,11 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                       <span style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600 }}>Albums sauvegardés ({importData.albums.length})</span>
                     </div>
                     {importData.albums.slice(0, 10).map(a => (
-                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `${spacing.xs}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
+                      <div key={a.spotify_id} style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `${spacing.xs}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
                         {a.image ? <img src={a.image} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: colors.background }} />}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ color: colors.textPrimary, fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
-                          <div style={{ color: colors.textMuted, fontSize: 10 }}>{a.artists.join(', ')} · {a.totalTracks} titres</div>
+                          <div style={{ color: colors.textMuted, fontSize: 10 }}>{a.artists} · {a.total_tracks} titres</div>
                         </div>
                       </div>
                     ))}

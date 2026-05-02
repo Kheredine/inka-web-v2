@@ -15,7 +15,7 @@ import { Sound, PlayHistory, SavedRelease, ReactionEmoji, REACTION_EMOJIS } from
 import { colors, spacing, radius, typography } from '@/lib/theme'
 import { TopBar } from '@/components/layout/TopBar'
 
-type Tab = 'uploads' | 'historique' | 'playlists'
+type Tab = 'uploads' | 'historique' | 'playlists' | 'spotify'
 type SortOrder = 'recent' | 'az'
 type CoeurFilter = 'all' | ReactionEmoji | 'singles'
 
@@ -401,10 +401,37 @@ export default function LibraryPage() {
   // Which emoji filters the user actually has
   const usedEmojis = Array.from(new Set(reactions.map(r => r.emoji)))
 
+  // ── Spotify imported data ──
+  const [spotifyLiked, setSpotifyLiked] = useState<{ id: string; name: string; artists: string; album: string; album_art: string | null; spotify_url: string }[]>([])
+  const [spotifyAlbums, setSpotifyAlbums] = useState<{ id: string; name: string; artists: string; image: string | null; album_type: string; total_tracks: number }[]>([])
+  const [spotifyPlaylists, setSpotifyPlaylists] = useState<{ id: string; name: string; description: string; image: string | null; track_count: number; owner: string; spotify_url: string }[]>([])
+  const [spotifyLoading, setSpotifyLoading] = useState(false)
+
+  const loadSpotify = useCallback(async () => {
+    if (!profile) return
+    setSpotifyLoading(true)
+    const [likedRes, albumsRes, playlistsRes] = await Promise.all([
+      supabase.from('spotify_liked_tracks').select('*').eq('user_id', profile.id).order('created_at', { ascending: false }),
+      supabase.from('spotify_saved_albums').select('*').eq('user_id', profile.id).order('created_at', { ascending: false }),
+      supabase.from('spotify_playlists').select('*').eq('user_id', profile.id).order('created_at', { ascending: false }),
+    ])
+    setSpotifyLiked((likedRes.data as typeof spotifyLiked) ?? [])
+    setSpotifyAlbums((albumsRes.data as typeof spotifyAlbums) ?? [])
+    setSpotifyPlaylists((playlistsRes.data as typeof spotifyPlaylists) ?? [])
+    setSpotifyLoading(false)
+  }, [profile])
+
+  useEffect(() => {
+    if (tab === 'spotify') loadSpotify()
+  }, [tab, loadSpotify])
+
+  const hasSpotifyData = spotifyLiked.length > 0 || spotifyAlbums.length > 0 || spotifyPlaylists.length > 0
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'uploads', label: 'Mes sons' },
     { key: 'historique', label: 'Historique' },
     { key: 'playlists', label: 'Playlists' },
+    ...(hasSpotifyData || tab === 'spotify' ? [{ key: 'spotify' as Tab, label: 'Spotify' }] : []),
   ]
 
   const filterLabel: Record<CoeurFilter, string> = {
@@ -767,6 +794,98 @@ export default function LibraryPage() {
               )
           }
         </>
+      )}
+
+      {/* ── Spotify tab ───────────────────────────────────────────────────── */}
+      {tab === 'spotify' && (
+        spotifyLoading ? (
+          <div style={{ padding: spacing.xl, textAlign: 'center' }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', border: `3px solid ${colors.border}`, borderTopColor: '#1DB954', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+            <p style={{ color: colors.textMuted, fontSize: typography.sm.fontSize, marginTop: spacing.md }}>Chargement...</p>
+          </div>
+        ) : !hasSpotifyData ? (
+          <div style={{ textAlign: 'center', padding: spacing.xxl }}>
+            <i className="fa-brands fa-spotify" style={{ fontSize: 48, color: '#1DB954', marginBottom: spacing.md }} />
+            <p style={{ color: colors.textMuted, fontSize: typography.sm.fontSize }}>Aucune donnée Spotify importée.</p>
+            <button onClick={() => router.push(`/profile/${profile?.id}`)}
+              style={{ marginTop: spacing.md, padding: `${spacing.sm}px ${spacing.lg}px`, borderRadius: radius.md, background: '#1DB954', border: 'none', color: '#fff', fontSize: typography.sm.fontSize, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Importer depuis Spotify
+            </button>
+          </div>
+        ) : (
+          <div>
+            {/* Liked tracks */}
+            {spotifyLiked.length > 0 && (
+              <div style={{ marginBottom: spacing.xl }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `0 ${spacing.lg}px`, marginBottom: spacing.sm }}>
+                  <i className="fa-solid fa-heart" style={{ color: '#1DB954', fontSize: 14 }} />
+                  <span style={{ color: colors.textPrimary, fontSize: typography.base.fontSize, fontWeight: 700 }}>Titres likés</span>
+                  <span style={{ fontSize: typography.xs.fontSize, color: colors.textMuted }}>{spotifyLiked.length}</span>
+                </div>
+                {spotifyLiked.map(t => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: spacing.md, padding: `${spacing.sm}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}`, cursor: t.spotify_url ? 'pointer' : 'default' }}
+                    onClick={() => { if (t.spotify_url) window.open(t.spotify_url, '_blank') }}>
+                    {t.album_art ? <img src={t.album_art} alt="" style={{ width: 40, height: 40, borderRadius: radius.sm, objectFit: 'cover', flexShrink: 0 }} /> : <div style={{ width: 40, height: 40, borderRadius: radius.sm, background: colors.surface, flexShrink: 0 }} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                      <div style={{ color: colors.textMuted, fontSize: 11, marginTop: 1 }}>{t.artists}</div>
+                    </div>
+                    <i className="fa-brands fa-spotify" style={{ color: '#1DB954', fontSize: 14, flexShrink: 0, opacity: 0.6 }} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Playlists */}
+            {spotifyPlaylists.length > 0 && (
+              <div style={{ marginBottom: spacing.xl }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `0 ${spacing.lg}px`, marginBottom: spacing.sm }}>
+                  <i className="fa-solid fa-list" style={{ color: '#1DB954', fontSize: 14 }} />
+                  <span style={{ color: colors.textPrimary, fontSize: typography.base.fontSize, fontWeight: 700 }}>Playlists</span>
+                  <span style={{ fontSize: typography.xs.fontSize, color: colors.textMuted }}>{spotifyPlaylists.length}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: spacing.md, padding: `0 ${spacing.lg}px` }}>
+                  {spotifyPlaylists.map(p => (
+                    <div key={p.id} style={{ background: colors.surface, borderRadius: radius.lg, overflow: 'hidden', border: `0.5px solid ${colors.border}`, cursor: p.spotify_url ? 'pointer' : 'default' }}
+                      onClick={() => { if (p.spotify_url) window.open(p.spotify_url, '_blank') }}>
+                      {p.image ? <img src={p.image} alt={p.name} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }} /> : <div style={{ width: '100%', aspectRatio: '1', background: colors.background, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fa-solid fa-music" style={{ fontSize: 24, color: colors.textMuted }} /></div>}
+                      <div style={{ padding: spacing.sm }}>
+                        <div style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                        <div style={{ color: colors.textMuted, fontSize: typography.xs.fontSize, marginTop: 2 }}>{p.track_count} titres · {p.owner}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Albums */}
+            {spotifyAlbums.length > 0 && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `0 ${spacing.lg}px`, marginBottom: spacing.sm }}>
+                  <i className="fa-solid fa-compact-disc" style={{ color: '#1DB954', fontSize: 14 }} />
+                  <span style={{ color: colors.textPrimary, fontSize: typography.base.fontSize, fontWeight: 700 }}>Albums sauvegardés</span>
+                  <span style={{ fontSize: typography.xs.fontSize, color: colors.textMuted }}>{spotifyAlbums.length}</span>
+                </div>
+                {spotifyAlbums.map(a => (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: spacing.md, padding: `${spacing.sm}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
+                    {a.image ? <img src={a.image} alt={a.name} style={{ width: 48, height: 48, borderRadius: radius.md, objectFit: 'cover', flexShrink: 0 }} /> : <div style={{ width: 48, height: 48, borderRadius: radius.md, background: colors.surface, flexShrink: 0 }} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.xs, marginBottom: 2 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--accent)', background: 'var(--accent-muted)', borderRadius: 4, padding: '2px 5px' }}>
+                          {a.album_type === 'album' ? 'Album' : a.album_type === 'single' ? 'Single' : 'EP'}
+                        </span>
+                      </div>
+                      <div style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                      <div style={{ color: colors.textMuted, fontSize: 11, marginTop: 1 }}>{a.artists} · {a.total_tracks} titres</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
       )}
 
       {sharingPlaylist && <ShareModal playlist={sharingPlaylist} visible={true} onClose={() => setSharingPlaylist(null)} />}

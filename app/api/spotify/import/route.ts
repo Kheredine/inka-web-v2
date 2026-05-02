@@ -62,49 +62,72 @@ export async function POST(req: NextRequest) {
 
   try {
     const accessToken = await getValidToken(user.id)
-    const result: Record<string, unknown> = {}
+    const likedTracks: { spotify_id: string; name: string; artists: string; album: string; album_art: string | null; duration_ms: number; spotify_url: string }[] = []
+    const playlists: { spotify_id: string; name: string; description: string; image: string | null; track_count: number; owner: string; is_public: boolean; spotify_url: string }[] = []
+    const albums: { spotify_id: string; name: string; artists: string; image: string | null; album_type: string; release_date: string; total_tracks: number }[] = []
 
     if (type === 'liked' || type === 'all') {
       const tracks = await getLikedTracks(accessToken)
-      result.likedTracks = tracks.map(t => ({
-        id: t.id,
+      likedTracks.push(...tracks.map(t => ({
+        spotify_id: t.id,
         name: t.name,
-        artists: t.artists.map(a => a.name),
-        album: t.album.name,
-        albumArt: t.album.images?.[0]?.url ?? null,
+        artists: t.artists.map(a => a.name).join(', '),
+        album: t.album?.name ?? '',
+        album_art: t.album?.images?.[0]?.url ?? null,
         duration_ms: t.duration_ms,
-        spotifyUrl: t.external_urls.spotify,
-      }))
+        spotify_url: t.external_urls?.spotify ?? '',
+      })))
+
+      if (likedTracks.length > 0) {
+        await sb.from('spotify_liked_tracks').upsert(
+          likedTracks.map(t => ({ user_id: user.id, ...t })),
+          { onConflict: 'user_id,spotify_id', ignoreDuplicates: true }
+        )
+      }
     }
 
     if (type === 'playlists' || type === 'all') {
-      const playlists = await getUserPlaylists(accessToken)
-      result.playlists = playlists.map(p => ({
-        id: p.id,
+      const rawPlaylists = await getUserPlaylists(accessToken)
+      playlists.push(...rawPlaylists.map(p => ({
+        spotify_id: p.id,
         name: p.name,
         description: p.description ?? '',
         image: p.images?.[0]?.url ?? null,
-        trackCount: p.tracks?.total ?? 0,
+        track_count: p.tracks?.total ?? 0,
         owner: p.owner?.display_name ?? 'Unknown',
-        isPublic: p.public ?? false,
-        spotifyUrl: p.external_urls?.spotify ?? '',
-      }))
+        is_public: p.public ?? false,
+        spotify_url: p.external_urls?.spotify ?? '',
+      })))
+
+      if (playlists.length > 0) {
+        await sb.from('spotify_playlists').upsert(
+          playlists.map(p => ({ user_id: user.id, ...p })),
+          { onConflict: 'user_id,spotify_id', ignoreDuplicates: true }
+        )
+      }
     }
 
     if (type === 'albums' || type === 'all') {
-      const albums = await getSavedAlbums(accessToken)
-      result.albums = albums.map(a => ({
-        id: a.album.id,
+      const rawAlbums = await getSavedAlbums(accessToken)
+      albums.push(...rawAlbums.map(a => ({
+        spotify_id: a.album.id,
         name: a.album.name,
-        artists: a.album.artists.map(ar => ar.name),
-        image: a.album.images?.[0]?.url ?? null,
-        albumType: a.album.album_type,
-        releaseDate: a.album.release_date,
-        totalTracks: a.album.total_tracks,
-      }))
+        artists: a.album.artists.map(ar => ar.name).join(', '),
+        image: a.album?.images?.[0]?.url ?? null,
+        album_type: a.album.album_type,
+        release_date: a.album.release_date,
+        total_tracks: a.album.total_tracks,
+      })))
+
+      if (albums.length > 0) {
+        await sb.from('spotify_saved_albums').upsert(
+          albums.map(a => ({ user_id: user.id, ...a })),
+          { onConflict: 'user_id,spotify_id', ignoreDuplicates: true }
+        )
+      }
     }
 
-    return NextResponse.json(result)
+    return NextResponse.json({ likedTracks, playlists, albums })
   } catch (err) {
     console.error('[spotify/import] Failed:', err)
     if (err instanceof Error && err.message === 'No Spotify connection found') {
