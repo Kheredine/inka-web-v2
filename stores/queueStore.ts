@@ -6,13 +6,14 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import type { QueueItem } from '@/types/track'
 
 export type RepeatMode = 'off' | 'one' | 'all'
+export type ShuffleMode = 'normal' | 'random' | 'ai'
 
 export interface QueueState {
   items: QueueItem[]
   currentIndex: number
   history: string[]                // last 50 track IDs, newest first
   originalOrder: string[]          // track IDs in original order (for shuffle restore)
-  shuffleMode: boolean
+  shuffleMode: ShuffleMode
   repeatMode: RepeatMode
   isLoadingNext: boolean
 }
@@ -74,6 +75,30 @@ function shuffleArray<T>(arr: T[], keepIndex: number): T[] {
   return result
 }
 
+/** AI shuffle — groups tracks by genre/artist similarity for cohesive listening.
+ *  Keeps the current track at index 0, then sorts remaining tracks so that
+ *  songs with the same genre or artist are played consecutively. */
+function aiShuffle(items: QueueItem[], currentIndex: number): QueueItem[] {
+  if (items.length <= 2) return [...items]
+
+  const result = [...items]
+  const current = currentIndex >= 0 && currentIndex < result.length ? result.splice(currentIndex, 1)[0] : null
+
+  // Sort by genre then artist for cohesive flow
+  result.sort((a, b) => {
+    const genreA = a.track.genre ?? ''
+    const genreB = b.track.genre ?? ''
+    if (genreA !== genreB) return genreA.localeCompare(genreB)
+    // Same genre — group by artist
+    const artistA = a.track.artists?.[0] ?? ''
+    const artistB = b.track.artists?.[0] ?? ''
+    return artistA.localeCompare(artistB)
+  })
+
+  if (current) result.unshift(current)
+  return result
+}
+
 export const useQueueStore = create<QueueStore>()(
   persist(
     (set, get) => ({
@@ -81,7 +106,7 @@ export const useQueueStore = create<QueueStore>()(
       currentIndex: 0,
       history: [],
       originalOrder: [],
-      shuffleMode: false,
+      shuffleMode: 'normal' as ShuffleMode,
       repeatMode: 'off' as RepeatMode,
       isLoadingNext: false,
 
@@ -192,21 +217,12 @@ export const useQueueStore = create<QueueStore>()(
 
       toggleShuffle: () => {
         set((s) => {
-          if (!s.shuffleMode) {
-            // Turning shuffle ON
-            const currentItemId = s.items[s.currentIndex]?.track.id
-            const shuffled = shuffleArray(s.items, s.currentIndex)
-            const newCurrentIndex = currentItemId
-              ? shuffled.findIndex((i) => i.track.id === currentItemId)
-              : 0
-            return {
-              items: shuffled,
-              currentIndex: newCurrentIndex,
-              shuffleMode: true,
-            }
-          } else {
-            // Turning shuffle OFF — restore original order
-            const currentItemId = s.items[s.currentIndex]?.track.id
+          const modes: ShuffleMode[] = ['normal', 'random', 'ai']
+          const nextMode = modes[(modes.indexOf(s.shuffleMode) + 1) % modes.length]
+          const currentItemId = s.items[s.currentIndex]?.track.id
+
+          if (nextMode === 'normal') {
+            // Restore original order
             const restoredOrder = s.originalOrder
             const items = [...s.items].sort((a, b) => {
               const aIdx = restoredOrder.indexOf(a.track.id)
@@ -219,7 +235,29 @@ export const useQueueStore = create<QueueStore>()(
             return {
               items,
               currentIndex: Math.max(0, newCurrentIndex),
-              shuffleMode: false,
+              shuffleMode: 'normal' as ShuffleMode,
+            }
+          } else if (nextMode === 'random') {
+            // Fisher-Yates random shuffle
+            const shuffled = shuffleArray(s.items, s.currentIndex)
+            const newCurrentIndex = currentItemId
+              ? shuffled.findIndex((i) => i.track.id === currentItemId)
+              : 0
+            return {
+              items: shuffled,
+              currentIndex: newCurrentIndex,
+              shuffleMode: 'random' as ShuffleMode,
+            }
+          } else {
+            // AI shuffle — sort by genre/mood similarity
+            const aiSorted = aiShuffle(s.items, s.currentIndex)
+            const newCurrentIndex = currentItemId
+              ? aiSorted.findIndex((i) => i.track.id === currentItemId)
+              : 0
+            return {
+              items: aiSorted,
+              currentIndex: newCurrentIndex,
+              shuffleMode: 'ai' as ShuffleMode,
             }
           }
         })

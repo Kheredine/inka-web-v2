@@ -12,7 +12,7 @@
  *                         Leave unset to always use signed URLs.
  */
 
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 const accountId = process.env.R2_ACCOUNT_ID!
@@ -45,6 +45,15 @@ export async function getAudioUrl(key: string): Promise<string> {
   }
   const command = new GetObjectCommand({ Bucket: bucketName, Key: key })
   return getSignedUrl(r2, command, { expiresIn: 3600 })
+}
+
+/** Delete an object from R2 by its key. */
+export async function deleteR2Object(key: string): Promise<void> {
+  const command = new DeleteObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+  })
+  await r2.send(command)
 }
 
 export { bucketName }

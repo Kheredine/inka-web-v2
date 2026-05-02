@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { useIsPlaying, useShuffleMode, useRepeatMode } from '@/stores/selectors'
 import { useQueueStore } from '@/stores/queueStore'
 import { audioEngine } from '@/lib/audioEngine'
-import type { RepeatMode } from '@/stores/queueStore'
+import type { RepeatMode, ShuffleMode } from '@/stores/queueStore'
 
 export function PlayerControls() {
   const isPlaying = useIsPlaying()
@@ -39,6 +39,14 @@ export function PlayerControls() {
     one: '🔂',
   }
 
+  const shuffleConfig: Record<ShuffleMode, { icon: string; label: string; color: string }> = {
+    normal: { icon: '🔀', label: 'Normal', color: 'rgba(255,255,255,0.6)' },
+    random: { icon: '🔀', label: 'Aléatoire', color: '#8b5cf6' },
+    ai: { icon: '🧠', label: 'Smart Shuffle', color: '#f59e0b' },
+  }
+
+  const currentShuffle = shuffleConfig[shuffleMode]
+
   const btnStyle = (active: boolean): React.CSSProperties => ({
     width: 44,
     height: 44,
@@ -50,6 +58,7 @@ export function PlayerControls() {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative' as const,
   })
 
   return (
@@ -60,9 +69,29 @@ export function PlayerControls() {
       gap: 8,
       padding: '8px 24px',
     }}>
-      {/* Shuffle */}
-      <button onClick={handleShuffle} aria-label="Toggle shuffle" style={btnStyle(shuffleMode)}>
-        🔀
+      {/* Shuffle — cycles: normal → random → ai → normal */}
+      <button
+        onClick={handleShuffle}
+        aria-label={`Shuffle: ${currentShuffle.label}`}
+        style={{
+          ...btnStyle(shuffleMode !== 'normal'),
+          color: currentShuffle.color,
+        }}
+      >
+        {currentShuffle.icon}
+        {/* Mode indicator dot */}
+        {shuffleMode !== 'normal' && (
+          <span style={{
+            position: 'absolute',
+            bottom: 6,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 4,
+            height: 4,
+            borderRadius: '50%',
+            background: currentShuffle.color,
+          }} />
+        )}
       </button>
 
       {/* Previous */}

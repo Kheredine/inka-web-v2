@@ -286,6 +286,8 @@ export default function LibraryPage() {
   const [sharingPlaylist, setSharingPlaylist] = useState<{ id: string; title: string } | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
+  const [deletingSoundId, setDeletingSoundId] = useState<string | null>(null)
+  const [deletingSound, setDeletingSound] = useState(false)
   const { playlists, loading: playlistsLoading, load: loadPlaylists, remove, update } = usePlaylists(profile?.id)
   const { saved: savedReleases } = useSavedReleasesStore()
   const { saved: savedSounds, remove: removeSavedSound } = useSavedSoundsStore()
@@ -308,6 +310,34 @@ export default function LibraryPage() {
       return true
     }))
     setIsLoading(false)
+  }, [profile])
+
+  const handleDeleteSound = useCallback(async (soundId: string) => {
+    if (!profile) return
+    setDeletingSound(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (!token) return
+
+      const res = await fetch('/api/delete-sound', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ soundId }),
+      })
+
+      if (res.ok) {
+        setUploads(prev => prev.filter(s => s.id !== soundId))
+      }
+    } catch (err) {
+      console.error('[library] Delete failed:', err)
+    } finally {
+      setDeletingSound(false)
+      setDeletingSoundId(null)
+    }
   }, [profile])
 
   const loadHistory = useCallback(async () => {
@@ -564,9 +594,60 @@ export default function LibraryPage() {
           {isLoading
             ? <SoundGrid>{Array.from({ length: 6 }).map((_, i) => <SoundCardSkeleton key={i} />)}</SoundGrid>
             : sortedUploads.length === 0
-              ? <p style={{ color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl, fontSize: typography.sm.fontSize }}>Tu n&apos;as rien uploadé pour l&apos;instant.</p>
-              : <SoundGrid>{sortedUploads.map(s => <SoundCard key={s.id} sound={s} variant="grid" onPress={() => playSound(s, sortedUploads)} />)}</SoundGrid>
+              ? <p style={{ color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl, fontSize: typography.sm.fontSize }}>Tu n'as rien uploadé pour l'instant.</p>
+              : <SoundGrid>{sortedUploads.map(s => (
+                <div key={s.id} style={{ position: 'relative' }}>
+                  <SoundCard sound={s} variant="grid" onPress={() => playSound(s, sortedUploads)} />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeletingSoundId(s.id) }}
+                    title="Supprimer"
+                    style={{
+                      position: 'absolute', top: 8, right: 8,
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+                      border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: colors.textMuted, fontSize: 11,
+                      transition: 'color 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = colors.error)}
+                    onMouseLeave={e => (e.currentTarget.style.color = colors.textMuted)}
+                  >
+                    <i className="fa-solid fa-trash" />
+                  </button>
+                </div>
+              ))}</SoundGrid>
           }
+
+          {/* Delete confirmation modal */}
+          {deletingSoundId && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+              onClick={() => setDeletingSoundId(null)}>
+              <div onClick={e => e.stopPropagation()} style={{
+                background: colors.surfaceElevated, borderRadius: radius.xl, padding: spacing.xl,
+                maxWidth: 340, width: '90%', border: `0.5px solid ${colors.border}`,
+                textAlign: 'center',
+              }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: 32, color: colors.error, marginBottom: spacing.md }} />
+                <h3 style={{ color: colors.textPrimary, margin: `0 0 ${spacing.sm}px`, fontSize: typography.base.fontSize, fontWeight: 700 }}>
+                  Supprimer ce son ?
+                </h3>
+                <p style={{ color: colors.textMuted, fontSize: typography.sm.fontSize, margin: `0 0 ${spacing.lg}px` }}>
+                  Cette action est irréversible. Le fichier audio sera définitivement supprimé.
+                </p>
+                <div style={{ display: 'flex', gap: spacing.sm }}>
+                  <button onClick={() => setDeletingSoundId(null)}
+                    style={{ flex: 1, padding: spacing.md, borderRadius: radius.md, background: colors.surface, border: `0.5px solid ${colors.border}`, color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Annuler
+                  </button>
+                  <button onClick={() => handleDeleteSound(deletingSoundId)} disabled={deletingSound}
+                    style={{ flex: 1, padding: spacing.md, borderRadius: radius.md, background: colors.error, border: 'none', color: '#fff', fontSize: typography.sm.fontSize, fontWeight: 600, cursor: deletingSound ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: deletingSound ? 0.6 : 1 }}>
+                    {deletingSound ? 'Suppression...' : 'Supprimer'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
