@@ -449,20 +449,24 @@ export default function LibraryPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: spacing.sm, padding: `0 ${spacing.lg}px`, marginBottom: spacing.md, overflowX: 'auto' }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            style={{
-              padding: `5px ${spacing.md}px`, borderRadius: radius.full, whiteSpace: 'nowrap',
-              border: `0.5px solid ${tab === t.key ? 'var(--accent)' : colors.border}`,
-              background: tab === t.key ? 'var(--accent-muted)' : 'transparent',
-              color: tab === t.key ? 'var(--accent)' : colors.textMuted,
-              fontSize: typography.sm.fontSize, fontWeight: tab === t.key ? 600 : 400,
-              cursor: 'pointer', fontFamily: 'inherit',
-              transition: 'all var(--ease-default)',
-            }}>
-            {t.label}
-          </button>
-        ))}
+        {TABS.map(t => {
+          const active = tab === t.key
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              style={{
+                padding: `8px ${spacing.lg}px`, borderRadius: radius.full, whiteSpace: 'nowrap',
+                border: `1.5px solid ${active ? 'var(--accent)' : colors.border}`,
+                background: active ? 'var(--accent)' : colors.surface,
+                color: active ? '#fff' : colors.textSecondary,
+                fontSize: typography.sm.fontSize, fontWeight: active ? 700 : 500,
+                cursor: 'pointer', fontFamily: 'inherit',
+                transition: 'all var(--ease-default)',
+                boxShadow: active ? '0 2px 10px rgba(255,107,53,0.25)' : 'none',
+              }}>
+              {t.label}
+            </button>
+          )
+        })}
       </div>
 
       {/* ── Mes sons tab ─────────────────────────────────────────────────────── */}

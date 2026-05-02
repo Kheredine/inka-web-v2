@@ -215,22 +215,29 @@ export default function AdminPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ borderBottom: `0.5px solid ${colors.border}`, display: 'flex', gap: 0, padding: `0 ${spacing.lg}px`, background: colors.surface }}>
-        {(['overview', 'sounds', 'users', 'tools'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              background: 'transparent', border: 'none', borderBottom: `2px solid ${tab === t ? 'var(--accent)' : 'transparent'}`,
-              color: tab === t ? 'var(--accent)' : colors.textSecondary,
-              padding: `${spacing.md}px ${spacing.md}px`, cursor: 'pointer',
-              fontSize: typography.sm.fontSize, fontWeight: tab === t ? 600 : 400, fontFamily: 'inherit',
-              transition: 'color 150ms, border-color 150ms',
-            }}
-          >
-            {TAB_LABELS[t]}
-          </button>
-        ))}
+      <div style={{ borderBottom: `1px solid ${colors.border}`, display: 'flex', gap: 0, padding: `0 ${spacing.lg}px`, background: colors.surface }}>
+        {(['overview', 'sounds', 'users', 'tools'] as const).map((t) => {
+          const active = tab === t
+          return (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                background: active ? 'var(--accent)' : 'transparent',
+                border: 'none',
+                borderBottom: `3px solid ${active ? 'var(--accent)' : 'transparent'}`,
+                color: active ? '#fff' : colors.textSecondary,
+                padding: `${spacing.md}px ${spacing.lg}px`, cursor: 'pointer',
+                fontSize: typography.sm.fontSize, fontWeight: active ? 700 : 500,
+                fontFamily: 'inherit',
+                transition: 'all 150ms',
+                borderRadius: `${radius.sm}px ${radius.sm}px 0 0`,
+              }}
+            >
+              {TAB_LABELS[t]}
+            </button>
+          )
+        })}
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: `${spacing.xl}px ${spacing.lg}px`, paddingBottom: 80 }}>

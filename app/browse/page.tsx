@@ -386,19 +386,20 @@ export default function DiscoverPage() {
                   onClick={() => setSearchTab(tab)}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '6px 16px', borderRadius: radius.full,
-                    border: `0.5px solid ${active ? 'var(--accent)' : colors.border}`,
-                    background: active ? 'var(--accent-muted)' : 'transparent',
-                    color: active ? 'var(--accent)' : colors.textSecondary,
-                    fontSize: typography.xs.fontSize, fontWeight: active ? 600 : 400,
+                    padding: '8px 18px', borderRadius: radius.full,
+                    border: `1.5px solid ${active ? 'var(--accent)' : colors.border}`,
+                    background: active ? 'var(--accent)' : colors.surface,
+                    color: active ? '#fff' : colors.textSecondary,
+                    fontSize: typography.sm.fontSize, fontWeight: active ? 700 : 500,
                     cursor: 'pointer', fontFamily: 'inherit',
                     transition: 'all var(--ease-default)',
                     textTransform: 'capitalize' as const,
+                    boxShadow: active ? '0 2px 10px rgba(255,107,53,0.25)' : 'none',
                   }}
                 >
                   {tab === 'sons' ? 'Sons' : 'Artistes'}
                   {!isSearching && count > 0 && (
-                    <span style={{ fontSize: 10, opacity: 0.8 }}>{count}</span>
+                    <span style={{ fontSize: 10, opacity: active ? 0.9 : 0.7, fontWeight: 600 }}>{count}</span>
                   )}
                 </button>
               )
