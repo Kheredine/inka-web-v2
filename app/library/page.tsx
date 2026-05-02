@@ -431,7 +431,7 @@ export default function LibraryPage() {
     { key: 'uploads', label: 'Mes sons' },
     { key: 'historique', label: 'Historique' },
     { key: 'playlists', label: 'Playlists' },
-    ...(hasSpotifyData || tab === 'spotify' ? [{ key: 'spotify' as Tab, label: 'Spotify' }] : []),
+    { key: 'spotify', label: 'Spotify' },
   ]
 
   const filterLabel: Record<CoeurFilter, string> = {
