@@ -21,13 +21,13 @@ export async function GET(req: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/settings?spotify_error=${encodeURIComponent(error)}`, req.url)
+      new URL(`/profile/${state}?spotify_error=${encodeURIComponent(error)}`, req.url)
     )
   }
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL('/settings?spotify_error=missing_params', req.url)
+      new URL(`/profile/${state || ''}?spotify_error=missing_params`, req.url)
     )
   }
 
@@ -50,18 +50,18 @@ export async function GET(req: NextRequest) {
     if (dbErr) {
       console.error('[spotify/callback] DB error:', dbErr)
       return NextResponse.redirect(
-        new URL('/settings?spotify_error=db_error', req.url)
+        new URL(`/profile/${state}?spotify_error=${encodeURIComponent('db_error: ' + dbErr.message)}`, req.url)
       )
     }
 
     // Redirect back to settings with success
     return NextResponse.redirect(
-      new URL('/settings?spotify_connected=1', req.url)
+      new URL(`/profile/${state}?spotify_connected=1`, req.url)
     )
   } catch (err) {
     console.error('[spotify/callback] Token exchange failed:', err)
     return NextResponse.redirect(
-      new URL('/settings?spotify_error=token_exchange_failed', req.url)
+      new URL(`/profile/${state}?spotify_error=${encodeURIComponent('token_exchange_failed: ' + String(err))}`, req.url)
     )
   }
 }

@@ -14,6 +14,11 @@ CREATE TABLE IF NOT EXISTS public.spotify_tokens (
 -- RLS: users can only read/write their own tokens
 ALTER TABLE public.spotify_tokens ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read own Spotify tokens" ON public.spotify_tokens;
+DROP POLICY IF EXISTS "Users can insert own Spotify tokens" ON public.spotify_tokens;
+DROP POLICY IF EXISTS "Users can update own Spotify tokens" ON public.spotify_tokens;
+DROP POLICY IF EXISTS "Users can delete own Spotify tokens" ON public.spotify_tokens;
+
 CREATE POLICY "Users can read own Spotify tokens"
   ON public.spotify_tokens FOR SELECT
   USING (auth.uid() = user_id);

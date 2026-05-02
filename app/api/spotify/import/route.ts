@@ -108,11 +108,15 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[spotify/import] Failed:', err)
     if (err instanceof Error && err.message === 'No Spotify connection found') {
-      return NextResponse.json({ error: 'Spotify not connected' }, { status: 400 })
+      return NextResponse.json({ error: 'Spotify not connected — please connect first' }, { status: 400 })
     }
     if (err instanceof Error && err.message.includes('TOKEN_EXPIRED')) {
       return NextResponse.json({ error: 'Spotify token expired, please reconnect' }, { status: 401 })
     }
-    return NextResponse.json({ error: 'Import failed', detail: String(err) }, { status: 500 })
+    if (err instanceof Error && err.message.includes('Spotify API error')) {
+      return NextResponse.json({ error: err.message }, { status: 502 })
+    }
+    const detail = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `Import failed: ${detail}` }, { status: 500 })
   }
 }
