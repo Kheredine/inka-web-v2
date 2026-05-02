@@ -253,6 +253,17 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   const [deletingAccount, setDeletingAccount] = useState(false)
   const signOut = useAuthStore((state) => state.signOut)
 
+  // ── Spotify state ──
+  const [spotifyConnected, setSpotifyConnected] = useState(false)
+  const [spotifyLoading, setSpotifyLoading] = useState(true)
+  const [importStep, setImportStep] = useState<'idle' | 'loading' | 'preview' | 'done'>('idle')
+  const [importData, setImportData] = useState<{
+    likedTracks: { id: string; name: string; artists: string[]; albumArt: string | null }[]
+    playlists: { id: string; name: string; image: string | null; trackCount: number; owner: string }[]
+    albums: { id: string; name: string; artists: string[]; image: string | null; totalTracks: number }[]
+  }>({ likedTracks: [], playlists: [], albums: [] })
+  const [spotifyError, setSpotifyError] = useState<string | null>(null)
+
   const isOwner = authProfile?.id === params.id
 
   useEffect(() => {
@@ -289,6 +300,59 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
     setCountry(profile.country ?? '')
     setAvatarPreview(profile.avatar_url ?? profileAvatars[0].src)
   }, [profile])
+
+  // ── Spotify checks & handlers ──
+  useEffect(() => {
+    if (!isOwner) { setSpotifyLoading(false); return }
+    supabase.auth.getSession().then(({ data }) => {
+      const token = data.session?.access_token
+      if (!token) { setSpotifyLoading(false); return }
+      fetch('/api/spotify/status', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : { connected: false })
+        .then(d => { setSpotifyConnected(d.connected); setSpotifyLoading(false) })
+        .catch(() => setSpotifyLoading(false))
+    })
+  }, [isOwner])
+
+  const handleConnectSpotify = async () => {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (!token) return
+    const res = await fetch('/api/spotify/auth', { headers: { Authorization: `Bearer ${token}` } })
+    if (res.ok) { const d = await res.json(); window.location.href = d.authUrl }
+  }
+
+  const handleDisconnectSpotify = async () => {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (!token) return
+    await fetch('/api/spotify/status', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+    setSpotifyConnected(false); setImportStep('idle')
+    setImportData({ likedTracks: [], playlists: [], albums: [] })
+  }
+
+  const handleSpotifyImport = async () => {
+    setImportStep('loading'); setSpotifyError(null)
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (!token) return
+      const res = await fetch('/api/spotify/import', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ type: 'all' }),
+      })
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Import failed') }
+      const d = await res.json()
+      setImportData({
+        likedTracks: (d.likedTracks ?? []) as { id: string; name: string; artists: string[]; albumArt: string | null }[],
+        playlists: (d.playlists ?? []) as { id: string; name: string; image: string | null; trackCount: number; owner: string }[],
+        albums: (d.albums ?? []) as { id: string; name: string; artists: string[]; image: string | null; totalTracks: number }[],
+      })
+      setImportStep('preview')
+    } catch (err) {
+      setSpotifyError(err instanceof Error ? err.message : 'Import failed'); setImportStep('idle')
+    }
+  }
 
   const joinedAt = useMemo(() => {
     if (!profile?.created_at) return null
@@ -628,6 +692,138 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
               <Button label="Modifier mon code" loading={savingSecurity} type="submit" />
             </form>
 
+          </div>
+        )}
+
+        {/* ── Spotify Integration ── */}
+        {isOwner && (
+          <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: radius.xl, overflow: 'hidden', marginBottom: spacing.lg }}>
+            <div style={{ padding: spacing.lg, borderBottom: `1px solid ${colors.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm }}>
+                <i className="fa-brands fa-spotify" style={{ fontSize: 28, color: '#1DB954' }} />
+                <div>
+                  <div style={{ color: colors.textPrimary, fontSize: typography.md.fontSize, fontWeight: 600 }}>Spotify</div>
+                  <div style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>
+                    {spotifyConnected ? 'Connecté — Importe tes titres et playlists' : 'Importe tes titres Spotify dans Inka'}
+                  </div>
+                </div>
+              </div>
+
+              {spotifyLoading ? (
+                <div style={{ textAlign: 'center', padding: spacing.md }}>
+                  <div style={{ color: colors.textMuted, fontSize: typography.sm.fontSize }}>Vérification...</div>
+                </div>
+              ) : spotifyConnected ? (
+                <div style={{ display: 'flex', gap: spacing.sm }}>
+                  {importStep === 'idle' && (
+                    <button onClick={handleSpotifyImport}
+                      style={{ flex: 1, padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radius.md, background: '#1DB954', border: 'none', color: '#fff', fontSize: typography.sm.fontSize, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <i className="fa-solid fa-download" style={{ marginRight: 6 }} />
+                      Importer mes données
+                    </button>
+                  )}
+                  <button onClick={handleDisconnectSpotify}
+                    style={{ padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radius.md, background: 'transparent', border: `1px solid ${colors.border}`, color: colors.textMuted, fontSize: typography.sm.fontSize, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Déconnecter
+                  </button>
+                </div>
+              ) : (
+                <button onClick={handleConnectSpotify}
+                  style={{ width: '100%', padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radius.md, background: '#1DB954', border: 'none', color: '#fff', fontSize: typography.sm.fontSize, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <i className="fa-brands fa-spotify" />
+                  Connecter Spotify
+                </button>
+              )}
+            </div>
+
+            {/* Import loading */}
+            {importStep === 'loading' && (
+              <div style={{ padding: spacing.xl, textAlign: 'center' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', border: `3px solid ${colors.border}`, borderTopColor: '#1DB954', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+                <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                <p style={{ color: colors.textMuted, fontSize: typography.sm.fontSize, marginTop: spacing.md }}>Importation en cours depuis Spotify...</p>
+              </div>
+            )}
+
+            {/* Import preview */}
+            {importStep === 'preview' && (
+              <div>
+                {importData.likedTracks.length > 0 && (
+                  <div style={{ borderBottom: `1px solid ${colors.border}` }}>
+                    <div style={{ padding: `${spacing.sm}px ${spacing.lg}px`, display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      <i className="fa-solid fa-heart" style={{ color: '#1DB954', fontSize: 14 }} />
+                      <span style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600 }}>Titres likés ({importData.likedTracks.length})</span>
+                    </div>
+                    <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                      {importData.likedTracks.slice(0, 20).map(t => (
+                        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `${spacing.xs}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
+                          {t.albumArt ? <img src={t.albumArt} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: colors.background }} />}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ color: colors.textPrimary, fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                            <div style={{ color: colors.textMuted, fontSize: 10 }}>{t.artists.join(', ')}</div>
+                          </div>
+                        </div>
+                      ))}
+                      {importData.likedTracks.length > 20 && <div style={{ padding: `${spacing.xs}px ${spacing.lg}px`, color: colors.textMuted, fontSize: 11, textAlign: 'center' }}>+{importData.likedTracks.length - 20} autres titres</div>}
+                    </div>
+                  </div>
+                )}
+                {importData.playlists.length > 0 && (
+                  <div style={{ borderBottom: `1px solid ${colors.border}` }}>
+                    <div style={{ padding: `${spacing.sm}px ${spacing.lg}px`, display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      <i className="fa-solid fa-list" style={{ color: '#1DB954', fontSize: 14 }} />
+                      <span style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600 }}>Playlists ({importData.playlists.length})</span>
+                    </div>
+                    {importData.playlists.map(p => (
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `${spacing.xs}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
+                        {p.image ? <img src={p.image} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: colors.background, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fa-solid fa-music" style={{ fontSize: 12, color: colors.textMuted }} /></div>}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: colors.textPrimary, fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                          <div style={{ color: colors.textMuted, fontSize: 10 }}>{p.trackCount} titres · par {p.owner}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {importData.albums.length > 0 && (
+                  <div>
+                    <div style={{ padding: `${spacing.sm}px ${spacing.lg}px`, display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      <i className="fa-solid fa-compact-disc" style={{ color: '#1DB954', fontSize: 14 }} />
+                      <span style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600 }}>Albums sauvegardés ({importData.albums.length})</span>
+                    </div>
+                    {importData.albums.slice(0, 10).map(a => (
+                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, padding: `${spacing.xs}px ${spacing.lg}px`, borderBottom: `0.5px solid ${colors.border}` }}>
+                        {a.image ? <img src={a.image} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: colors.background }} />}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: colors.textPrimary, fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                          <div style={{ color: colors.textMuted, fontSize: 10 }}>{a.artists.join(', ')} · {a.totalTracks} titres</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ padding: spacing.md }}>
+                  <button onClick={() => setImportStep('done')} style={{ width: '100%', padding: spacing.md, borderRadius: radius.md, background: '#1DB954', border: 'none', color: '#fff', fontSize: typography.sm.fontSize, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <i className="fa-solid fa-check" style={{ marginRight: 6 }} />Vu — Retourner au profil
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {importStep === 'done' && (
+              <div style={{ padding: spacing.lg, textAlign: 'center' }}>
+                <i className="fa-solid fa-circle-check" style={{ fontSize: 32, color: '#1DB954', marginBottom: spacing.sm }} />
+                <p style={{ color: colors.textPrimary, fontSize: typography.sm.fontSize, fontWeight: 600 }}>Import Spotify terminé !</p>
+                <p style={{ color: colors.textMuted, fontSize: typography.xs.fontSize, marginTop: spacing.xs }}>Tes titres likés, playlists et albums sont visibles dans ta Bibliothèque.</p>
+                <button onClick={() => router.push('/library')} style={{ marginTop: spacing.md, padding: `${spacing.sm}px ${spacing.lg}px`, borderRadius: radius.md, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: typography.sm.fontSize, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Ouvrir la Bibliothèque</button>
+              </div>
+            )}
+
+            {spotifyError && (
+              <div style={{ padding: spacing.md, background: 'rgba(239,68,68,0.1)', margin: spacing.md, borderRadius: radius.md }}>
+                <p style={{ color: colors.error, fontSize: typography.sm.fontSize, margin: 0 }}><i className="fa-solid fa-triangle-exclamation" style={{ marginRight: 6 }} />{spotifyError}</p>
+              </div>
+            )}
           </div>
         )}
 
